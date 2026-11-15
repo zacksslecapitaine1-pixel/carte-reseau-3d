@@ -65,6 +65,26 @@ const EXTRA={
 };
 PARTS.forEach(p=>Object.assign(p,EXTRA[p.id]));
 
+/* Point d’ancrage de chaque numéro : posé SUR la pièce (et non en l’air) */
+const PIN = {
+  rj45: [-3.25, 1.2, -0.8], sfp: [-3.25, 0.98, 1.0], controleur: [-0.3, 0.32, 0.97],
+  dissipateur: [0.4, 0.98, 0], pcie: [1.1, 0.22, 2.28], firmware: [2.6, 0.24, -1.3],
+  alim: [2.6, 0.5, 0.7], pistes: [-1.4, 0.16, -0.55], leds: [-4.2, 1.36, -0.8]
+};
+PARTS.forEach((p) => { p.pin = PIN[p.id]; });
+
+/* Les 4 flux de données, nommés et numérotés */
+const FLOWS = [
+  { n: 1, short: 'RJ45 → Contrôleur', name: 'Flux 1 · Réception par le câble cuivre', col: '#fbbf24',
+    desc: 'Les trames arrivent du câble Ethernet : le port RJ45 isole le signal électrique et l’envoie vers le contrôleur (PHY puis MAC).', via: 'Port RJ45 → pistes → Contrôleur MAC + PHY' },
+  { n: 2, short: 'SFP+ → Contrôleur', name: 'Flux 2 · Réception par la fibre optique', col: '#fbbf24',
+    desc: 'Le module optique transforme la lumière en signal électrique. Le contrôleur reçoit ensuite les bits comme pour le cuivre.', via: 'Cage SFP+ → pistes → Contrôleur MAC + PHY' },
+  { n: 3, short: 'Contrôleur → PCIe', name: 'Flux 3 · Vers l’ordinateur (DMA)', col: '#38bdf8',
+    desc: 'Une fois la trame vérifiée (CRC), le contrôleur l’écrit directement en mémoire RAM grâce au DMA, via le bus PCI Express.', via: 'Contrôleur → Connecteur PCI Express → RAM' },
+  { n: 4, short: 'PCIe → Contrôleur', name: 'Flux 4 · Depuis l’ordinateur (émission)', col: '#a78bfa',
+    desc: 'Pour envoyer des données, le pilote place les paquets en RAM ; la carte les lit par le bus PCIe, puis le contrôleur construit les trames.', via: 'RAM → Connecteur PCI Express → Contrôleur' }
+];
+
 /* ---------- Scène ---------- */
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -72,6 +92,9 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 
+const renderer_ = renderer;
+renderer_.shadowMap.enabled = true;
+renderer_.shadowMap.type = THREE.PCFShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b1220);
 scene.fog = new THREE.Fog(0x0b1220, 16, 36);
@@ -102,11 +125,27 @@ const violet = new THREE.PointLight(0xa78bfa, 110, 0, 2);
 violet.position.set(6, 2.5, -4);
 scene.add(violet);
 
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -7; key.shadow.camera.right = 7;
+key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
+key.shadow.camera.near = 1; key.shadow.camera.far = 24;
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+const ambient = new THREE.AmbientLight(0xffffff, 0);
+scene.add(ambient);
+
 const grid = new THREE.GridHelper(40, 80, 0x1d4ed8, 0x14233f);
 grid.position.y = -1.3;
 grid.material.transparent = true;
 grid.material.opacity = 0.55;
 scene.add(grid);
+
+/* Sol du mode Réaliste (reçoit les ombres) */
+const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64), new THREE.MeshStandardMaterial({ color: 0x15181e, roughness: 0.6, metalness: 0.1 }));
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -1.3;
+floor.receiveShadow = true;
+floor.visible = false;
+scene.add(floor);
 
 /* ---------- Matériaux et aides ---------- */
 const std = (o) => new THREE.MeshStandardMaterial(o);
@@ -132,7 +171,7 @@ function cyl(r, h, mat, x, y, z, parent) {
 /* Carte (circuit imprimé) et équerre : éléments statiques */
 const statics = new THREE.Group();
 scene.add(statics);
-box(8, 0.15, 4, new THREE.MeshPhysicalMaterial({ color: 0x0a6b63, roughness: 0.5, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.35 }), 0, 0, 0, statics);
+const pcb = box(8, 0.15, 4, new THREE.MeshPhysicalMaterial({ color: 0x0a6b63, roughness: 0.5, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.35 }), 0, 0, 0, statics);
 box(0.08, 2.2, 4.3, std({ color: 0xd3dbe8, metalness: 1, roughness: 0.35 }), -4.04, 0.2, 0, statics);
 for (let i = 0; i < 46; i++) {
   const x = -2 + Math.random() * 5.6;
@@ -180,10 +219,11 @@ function registerPart(id, group) {
   registerPart('sfp', g);
 }
 // 3. Contrôleur
+let chipTop;
 {
   const g = new THREE.Group();
   box(2.0, 0.14, 2.0, dark(), 0.4, 0.145, 0, g);
-  box(1.1, 0.08, 1.1, std({ color: 0x9aa7bd, metalness: 1, roughness: 0.3 }), 0.4, 0.255, 0, g);
+  chipTop = box(1.1, 0.08, 1.1, std({ color: 0x9aa7bd, metalness: 1, roughness: 0.3 }), 0.4, 0.255, 0, g);
   box(0.12, 0.02, 0.12, glow(0x38bdf8, 1.4), -0.45, 0.225, -0.85, g);
   registerPart('controleur', g);
 }
@@ -251,6 +291,90 @@ const ledB = glow(0xfbbf24, 1.6);
   registerPart('leds', g);
 }
 
+
+/* ---------- Variantes de matériaux : 2D · 3D · Réaliste ---------- */
+function makeTex(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+const prime = (m) => { m.userData.e0 = m.emissive ? m.emissive.getHex() : 0; m.userData.i0 = m.emissiveIntensity !== undefined ? m.emissiveIntensity : 1; return m; };
+
+const pcbTex = makeTex(2048, 1024, (x, W, H) => {
+  const X = (wx) => ((wx + 4) / 8) * W, Z = (wz) => ((wz + 2) / 4) * H;
+  x.fillStyle = '#0c6b50'; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 9000; i++) { x.fillStyle = 'rgba(' + (Math.random() < .5 ? '255,255,255' : '0,0,0') + ',' + (Math.random() * .035).toFixed(3) + ')'; x.fillRect(Math.random() * W, Math.random() * H, 2 + Math.random() * 5, 2); }
+  x.lineCap = 'round'; x.lineJoin = 'round';
+  PATHS.forEach((p) => {
+    for (const k of [-1, 0, 1]) {
+      x.strokeStyle = 'rgba(70,190,150,.8)'; x.lineWidth = 6;
+      x.beginPath();
+      p.pts.forEach(([wx, wz], i) => { const px = X(wx + p.off[0] * k * 0.1), pz = Z(wz + p.off[1] * k * 0.1); i ? x.lineTo(px, pz) : x.moveTo(px, pz); });
+      x.stroke();
+    }
+  });
+  x.strokeStyle = 'rgba(70,190,150,.45)'; x.lineWidth = 4;
+  for (let i = 0; i < 26; i++) { const z0 = Z(-1.8 + i * 0.14); x.beginPath(); x.moveTo(X(1.9), z0); x.lineTo(X(2.0 + (i % 3) * 0.1), z0); x.lineTo(X(2.4), z0 + (i % 2 ? 24 : -24)); x.stroke(); }
+  x.fillStyle = '#e8c15a';
+  for (let i = 0; i < 70; i++) { x.beginPath(); x.arc(X(-2 + Math.random() * 5.8), Z(-1.8 + Math.random() * 3.6), 5, 0, 7); x.fill(); }
+  x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 4;
+  x.strokeRect(X(-0.75), Z(-1.05), X(1.55) - X(-0.75), Z(1.05) - Z(-1.05));
+  x.strokeRect(X(2.2), Z(-1.65), X(3.0) - X(2.2), Z(-0.95) - Z(-1.65));
+  x.fillStyle = '#fff'; x.font = 'bold 40px "Times New Roman", serif';
+  x.fillText('ESGIS · GROUPE 17', X(-1.9), Z(1.85));
+  x.font = '30px "Times New Roman", serif';
+  x.fillText('NIC 10G · PCIe x4 · REV 1.0', X(0.7), Z(1.62));
+  x.fillText('U1', X(-0.7), Z(-1.1)); x.fillText('FLASH', X(2.2), Z(-1.7)); x.fillText('J1', X(-3.9), Z(-0.4));
+});
+const chipTex = makeTex(512, 512, (x, W, H) => {
+  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#c4ccda'); g.addColorStop(1, '#8e99ad');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 160; i++) { x.fillStyle = 'rgba(255,255,255,' + (Math.random() * .08).toFixed(3) + ')'; x.fillRect(0, Math.random() * H, W, 1); }
+  x.fillStyle = '#2a3347'; x.textAlign = 'center';
+  x.font = 'bold 64px "Times New Roman", serif'; x.fillText('ESGIS', W / 2, 190);
+  x.font = '38px "Times New Roman", serif'; x.fillText('NIC-X10 · MAC + PHY', W / 2, 252); x.fillText('10 GbE · IEEE 802.3', W / 2, 304); x.fillText('L1 · L2 · DMA', W / 2, 356);
+  x.beginPath(); x.arc(52, 52, 14, 0, 7); x.fill();
+});
+{
+  const side = std({ color: 0x0a5a42, roughness: 0.5, metalness: 0.1 });
+  const top = new THREE.MeshPhysicalMaterial({ map: pcbTex, roughness: 0.42, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.22 });
+  pcb.userData.mReal = [side, side, top, side, side, side].map(prime);
+  const cs = std({ color: 0xb9c2d1, metalness: 1, roughness: 0.28 });
+  const ct = std({ map: chipTex, metalness: 0.85, roughness: 0.32 });
+  chipTop.userData.mReal = [cs, cs, ct, cs, cs, cs].map(prime);
+}
+
+const solids = [];
+statics.traverse((o) => { if (o.isMesh) solids.push(o); });
+partMeshes.forEach((o) => solids.push(o));
+const edgeMat = new THREE.LineBasicMaterial({ color: 0xd6ecff, transparent: true, opacity: 0.9 });
+solids.forEach((m) => {
+  m.userData.m3 = m.material;
+  m.castShadow = true; m.receiveShadow = true;
+  if (m.geometry.type !== 'TubeGeometry') {
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 28), edgeMat);
+    e.visible = false; e.userData.edge = true; m.add(e);
+  }
+});
+const flatCache = new Map();
+function flatOf(m) {
+  if (!flatCache.has(m)) {
+    const f = new THREE.MeshStandardMaterial({ color: m.color.clone().lerp(new THREE.Color(0xffffff), 0.08), roughness: 1, metalness: 0, emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0), emissiveIntensity: m.emissive ? m.emissiveIntensity : 0 });
+    flatCache.set(m, prime(f));
+  }
+  return flatCache.get(m);
+}
+function setLive(m, v) { m.emissiveIntensity = v; m.userData.i0 = v; const f = flatCache.get(m); if (f) { f.emissiveIntensity = v; f.userData.i0 = v; } }
+function matFor(mesh, md) {
+  if (md === '2d') return flatOf(mesh.userData.m3);
+  if (md === 'real' && mesh.userData.mReal) return mesh.userData.mReal;
+  return mesh.userData.m3;
+}
+
 /* Particules de données */
 function glowTexture() {
   const c = document.createElement('canvas');
@@ -268,7 +392,7 @@ const gtex = glowTexture();
 const particles = [];
 const flowGroup = new THREE.Group();
 scene.add(flowGroup);
-PATHS.forEach((p) => {
+PATHS.forEach((p, fi) => {
   const pts = p.pts.map(([x, z]) => new THREE.Vector3(x, 0.14, z));
   let total = 0;
   const segs = [];
@@ -283,7 +407,7 @@ PATHS.forEach((p) => {
     halo.scale.set(0.5, 0.5, 0.5);
     core.add(halo);
     flowGroup.add(core);
-    particles.push({ core, pts, segs, total, offset: n / 4 });
+    particles.push({ core, pts, segs, total, offset: n / 4, flow: fi });
   }
 });
 function placeParticle(pt, u) {
@@ -315,11 +439,32 @@ PARTS.forEach((p, i) => {
 
   const pin = document.createElement('div');
   pin.className = 'pin';
-  pin.textContent = p.n;
+  pin.innerHTML = '<span class="nn">' + p.n + '</span><span class="pl">' + p.name + '</span>';
   pin.title = p.name;
   pin.addEventListener('click', () => select(p.id));
   pinsEl.appendChild(pin);
   pinEls[p.id] = pin;
+});
+
+/* Légende et étiquettes des flux */
+const legendEl = document.getElementById('legend');
+const flowLbl = [];
+legendEl.innerHTML = '<div class="lt">FLUX DE DONNÉES</div>';
+FLOWS.forEach((f, i) => {
+  const b = document.createElement('button');
+  b.dataset.i = i;
+  b.innerHTML = '<span class="fn" style="background:' + f.col + '">F' + f.n + '</span><span>' + f.short + '</span>';
+  b.addEventListener('click', () => selectFlow(i));
+  legendEl.appendChild(b);
+  const l = document.createElement('div');
+  l.className = 'flowlbl';
+  l.style.setProperty('--c', f.col);
+  l.textContent = 'Flux ' + f.n;
+  l.title = f.name;
+  l.dataset.i = i;
+  l.addEventListener('click', () => selectFlow(i));
+  pinsEl.appendChild(l);
+  flowLbl.push({ el: l, pos: new THREE.Vector3(...[[-1.95, 0.3, -1.15], [-1.95, 0.3, 1.35], [-0.05, 0.3, 1.45], [1.45, 0.3, 1.95]][i]) });
 });
 
 function intro() {
@@ -327,11 +472,12 @@ function intro() {
     '<span class="layer">EXPLORATEUR 3D</span><h2>Qu’est-ce qu’une carte réseau ?</h2>' +
     '<p>La carte réseau (NIC, Network Interface Card) est l’interface matérielle entre une machine et le réseau. Elle fonctionne aux couches 1 et 2 du modèle OSI : elle transforme les données en signaux et les structure en trames.</p>' +
     '<h4>COMMENT EXPLORER</h4><p>Cliquez sur une pièce ou sur un numéro pour afficher sa définition et son rôle. Lancez la <b>visite guidée</b>, la <b>vue éclatée</b> ou le <b>flux de données</b> avec les boutons du bas.</p>' +
-    '<div class="keep">Les impulsions jaunes représentent les données émises ou reçues ; les bleues et violettes, les échanges avec le processeur par le bus PCIe.</div>';
+    '<div class="keep">Les <b>flux numérotés F1 à F4</b> montrent le trajet des données : F1 et F2 (jaune) arrivent du câble ou de la fibre, F3 (bleu) monte vers l’ordinateur, F4 (violet) en descend. Cliquez sur un flux pour le suivre.</div>';
 }
 function select(id) {
   if (quiz && quiz.target) { answer(id); return; }
   stopAuto();
+  setFlow(-1);
   selected = id;
   const p = PARTS.find((x) => x.id === id);
   detailEl.innerHTML =
@@ -344,21 +490,51 @@ function select(id) {
 }
 function deselect() {
   selected = null;
+  setFlow(-1);
   intro();
   listEl.querySelectorAll('button').forEach((b) => b.classList.remove('on'));
   Object.values(pinEls).forEach((el) => el.classList.remove('on'));
 }
 intro();
 
+let activeFlow = -1;
+function setFlow(i) {
+  activeFlow = i;
+  legendEl.querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.i === i));
+}
+function selectFlow(i) {
+  if (quiz) return;
+  stopAuto(); stopTour();
+  selected = null;
+  listEl.querySelectorAll('button').forEach((b) => b.classList.remove('on'));
+  Object.values(pinEls).forEach((el) => el.classList.remove('on'));
+  setFlow(i);
+  flowOn = true; $('bFlow').classList.add('on');
+  explodeGoal = 0; $('bExplode').classList.remove('on');
+  const f = FLOWS[i];
+  detailEl.innerHTML = '<span class="layer">FLUX ' + f.n + ' SUR 4</span><h2>' + f.name + '</h2>' +
+    '<h4>TRAJET</h4><p>' + f.via + '</p><h4>EXPLICATION</h4><p>' + f.desc + '</p>' +
+    '<div class="keep"><b>Repère :</b> les points lumineux de couleur ' + (i < 2 ? 'jaune' : i === 2 ? 'bleue' : 'violette') + ' sur la carte suivent ce flux.</div>';
+  detailEl.scrollTop = 0;
+  const m = flowLbl[i].pos;
+  flyTo({ look: [m.x, 0.2, m.z], dist: mode === '2d' ? 6 : 5.5, dir: [0.35, 0.9, 0.55] });
+}
+
 /* Caméra animée */
 let goal = null;
 function flyTo(p) {
   const look = new THREE.Vector3(...p.look);
-  const dir = new THREE.Vector3(...p.dir).normalize();
-  goal = { pos: look.clone().addScaledVector(dir, p.dist), look };
+  const flat = mode === '2d';
+  const dir = new THREE.Vector3(...(flat ? [0, 1, 0.001] : p.dir)).normalize();
+  goal = { pos: look.clone().addScaledVector(dir, flat ? Math.max(4, p.dist * 0.8) : p.dist), look };
+}
+function homeGoal() {
+  return mode === '2d'
+    ? { pos: new THREE.Vector3(0.55, 13.8, 0.001), look: new THREE.Vector3(0.55, 0, 0) }
+    : { pos: HOME.pos.clone(), look: HOME.look.clone() };
 }
 function goHome() {
-  goal = { pos: HOME.pos.clone(), look: HOME.look.clone() };
+  goal = homeGoal();
 }
 controls.addEventListener('start', () => {
   goal = null;
@@ -425,7 +601,7 @@ $('bExplode').onclick = () => {
   explodeGoal = explodeGoal ? 0 : 1;
   $('bExplode').classList.toggle('on', !!explodeGoal);
   if (!selected) {
-    goal = { pos: new THREE.Vector3(8.5, 7, 11), look: new THREE.Vector3(0, 0.8, 0) };
+    goal = mode === '2d' ? { pos: new THREE.Vector3(0.55, 15, 0.001), look: new THREE.Vector3(0.55, 0, 0) } : { pos: new THREE.Vector3(8.5, 7, 11), look: new THREE.Vector3(0, 0.8, 0) };
     stopAuto();
   }
 };
@@ -444,7 +620,7 @@ $('bReset').onclick = () => {
   $('bExplode').classList.remove('on');
   deselect();
   goHome();
-  controls.autoRotate = true;
+  controls.autoRotate = mode !== '2d';
 };
 $('bFull').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
@@ -457,6 +633,8 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'e' || e.key === 'E') $('bExplode').click();
   else if (e.key === 'f' || e.key === 'F') $('bFlow').click();
   else if (e.key === 'q' || e.key === 'Q') $('bQuiz').click();
+  else if (e.key === 'm' || e.key === 'M') setMode(MODE_ORDER[(MODE_ORDER.indexOf(mode) + 1) % 3]);
+  else if (/^[1-9]$/.test(e.key) && PARTS[+e.key - 1]) { stopTour(); select(PARTS[+e.key - 1].id); }
   else if (e.key === 'Escape') $('bReset').click();
 });
 
@@ -505,6 +683,83 @@ function highlight(id, boost) {
   });
 }
 
+/* ---------- Modes d’affichage : 2D · 3D · Réaliste ---------- */
+const MODE_ORDER = ['2d', '3d', 'real'];
+const envTex = scene.environment;
+const MODES = {
+  '3d': { bg: 0x0b1220, fog: [0x0b1220, 16, 36], envI: 1, exp: 1.15, tone: THREE.ACESFilmicToneMapping, key: [1.5, 0xffffff, [3, 7, 5]], cyan: 140, violet: 110, amb: 0, grid: true, gridOp: 0.55, floor: false, shadow: false },
+  real: { bg: 0x101319, fog: [0x101319, 18, 42], envI: 0.9, exp: 0.95, tone: THREE.ACESFilmicToneMapping, key: [2.4, 0xfff1dc, [4, 8, 5]], cyan: 22, violet: 16, amb: 0.05, grid: false, gridOp: 0, floor: true, shadow: true },
+  '2d': { bg: 0x0a2a4a, fog: null, envI: 0, exp: 1, tone: THREE.NoToneMapping, key: [0.45, 0xffffff, [0, 10, 0.01]], cyan: 0, violet: 0, amb: 0.85, grid: true, gridOp: 0.45, floor: false, shadow: false }
+};
+let mode = '3d';
+function refreshMats() {
+  const flat = mode === '2d';
+  for (const m of solids) {
+    m.material = matFor(m, mode);
+    for (const c of m.children) if (c.userData.edge) c.visible = flat;
+  }
+  for (const p of PARTS) {
+    const set = new Set();
+    partGroups[p.id].group.traverse((o) => {
+      if (o.isMesh) (Array.isArray(o.material) ? o.material : [o.material]).forEach((x) => set.add(x));
+    });
+    partGroups[p.id].mats = set;
+  }
+}
+function setMode(md) {
+  const prev = mode;
+  mode = md;
+  const c = MODES[md];
+  scene.background.setHex(c.bg);
+  scene.fog = c.fog ? new THREE.Fog(c.fog[0], c.fog[1], c.fog[2]) : null;
+  scene.environment = c.envI ? envTex : null;
+  scene.environmentIntensity = c.envI;
+  renderer.toneMapping = c.tone;
+  renderer.toneMappingExposure = c.exp;
+  key.intensity = c.key[0]; key.color.setHex(c.key[1]); key.position.set(...c.key[2]);
+  key.castShadow = c.shadow;
+  cyan.intensity = c.cyan; violet.intensity = c.violet; ambient.intensity = c.amb;
+  grid.visible = c.grid; grid.material.opacity = c.gridOp;
+  floor.visible = c.floor;
+  refreshMats();
+  scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true; }); });
+  floor.material.needsUpdate = true;
+  document.body.classList.toggle('m2d', md === '2d');
+  document.body.dataset.mode = md;
+  MODE_ORDER.forEach((k) => $('mode-' + k).classList.toggle('on', k === md));
+  // caméra
+  const flat = md === '2d';
+  controls.enableRotate = !flat;
+  controls.minPolarAngle = flat ? 0 : 0;
+  controls.maxPolarAngle = flat ? 0.0001 : Math.PI * 0.56;
+  controls.screenSpacePanning = flat;
+  controls.mouseButtons = flat ? { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN } : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+  controls.touches = flat ? { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN } : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  if (flat) controls.autoRotate = false;
+  else if (prev === '2d' && !selected && activeFlow < 0) controls.autoRotate = true;
+  const p = PARTS.find((x) => x.id === selected);
+  if (p) flyTo(p); else if (activeFlow >= 0) selectFlow(activeFlow); else goHome();
+}
+MODE_ORDER.forEach((k) => { $('mode-' + k).onclick = () => setMode(k); });
+
+/* Numéros : visibles seulement si la pièce est vue, jamais sous l’interface */
+const occRay = new THREE.Raycaster();
+const occDir = new THREE.Vector3();
+function occluded(world) {
+  occDir.copy(world).sub(camera.position);
+  const d = occDir.length();
+  occDir.divideScalar(d);
+  occRay.set(camera.position, occDir);
+  occRay.far = d - 0.05;
+  return occRay.intersectObjects(solids, false).length > 0;
+}
+let uiRects = [];
+function measureUI() {
+  uiRects = ['panel', 'bar', 'legend', 'modes', 'brand'].map((id) => document.getElementById(id)).filter((e) => e && e.getClientRects().length > 0).map((e) => e.getBoundingClientRect());
+}
+addEventListener('resize', measureUI);
+const underUI = (x, y) => uiRects.some((r) => x > r.left - 16 && x < r.right + 16 && y > r.top - 16 && y < r.bottom + 16);
+
 /* Boucle */
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -515,6 +770,7 @@ addEventListener('resize', resize);
 resize();
 
 const tmp = new THREE.Vector3();
+let frameN = 0;
 function frame(ms) {
   requestAnimationFrame(frame);
   const t = ms / 1000;
@@ -532,8 +788,8 @@ function frame(ms) {
     partGroups[p.id].group.position.set(p.explode[0] * e, p.explode[1] * e, p.explode[2] * e);
   }
 
-  ledA.emissiveIntensity = 1.4 + Math.sin(t * 2) * 0.5;
-  ledB.emissiveIntensity = Math.sin(t * 13) > 0.2 ? 2 : 0.25;
+  setLive(ledA, 1.4 + Math.sin(t * 2) * 0.5);
+  setLive(ledB, Math.sin(t * 13) > 0.2 ? 2 : 0.25);
 
   for (const p of PARTS) {
     let b = 0;
@@ -546,17 +802,41 @@ function frame(ms) {
   if (flowGroup.visible) {
     for (const pt of particles) {
       placeParticle(pt, (t * 0.22 + pt.offset) % 1);
+      const sc = activeFlow < 0 ? 1 : pt.flow === activeFlow ? 1.9 : 0.55;
+      pt.core.scale.setScalar(sc);
     }
   }
 
+  frameN = (frameN + 1) % 4;
+  if (frameN === 0) measureUI();
   for (const p of PARTS) {
-    tmp.set(p.look[0], p.look[1] + 0.35, p.look[2]).add(partGroups[p.id].group.position).project(camera);
+    tmp.set(p.pin[0], p.pin[1], p.pin[2]).add(partGroups[p.id].group.position);
+    const wp = tmp.clone();
+    tmp.project(camera);
     const el = pinEls[p.id];
-    if (tmp.z > 1) { el.style.display = 'none'; continue; }
+    if (tmp.z > 1 || Math.abs(tmp.x) > 1.05 || Math.abs(tmp.y) > 1.05) { el.style.display = 'none'; continue; }
+    const sx = (tmp.x * 0.5 + 0.5) * innerWidth, sy = (-tmp.y * 0.5 + 0.5) * innerHeight;
     el.style.display = 'grid';
-    el.style.transform = 'translate(' + ((tmp.x * 0.5 + 0.5) * innerWidth).toFixed(1) + 'px,' + ((-tmp.y * 0.5 + 0.5) * innerHeight).toFixed(1) + 'px)';
+    el.style.transform = 'translate(' + sx.toFixed(1) + 'px,' + sy.toFixed(1) + 'px)';
+    el.style.zIndex = String(Math.round((1 - tmp.z) * 4000));
+    el.classList.toggle('up', p.id === 'alim');
+    el.classList.toggle('flip', p.id !== 'alim' && sx > innerWidth - 640);
+    const hide = underUI(sx, sy);
+    if (frameN === 0 || el._occ === undefined) el._occ = occluded(wp);
+    el.classList.toggle('gone', hide);
+    el.classList.toggle('occ', !hide && el._occ);
   }
+  const showFlowLbl = flowOn && e < 0.05;
+  flowLbl.forEach((f) => {
+    tmp.copy(f.pos).project(camera);
+    const sx = (tmp.x * 0.5 + 0.5) * innerWidth, sy = (-tmp.y * 0.5 + 0.5) * innerHeight;
+    f.el.style.display = showFlowLbl && tmp.z < 1 && !underUI(sx, sy) ? 'block' : 'none';
+    f.el.style.transform = 'translate(' + sx.toFixed(1) + 'px,' + sy.toFixed(1) + 'px)';
+    f.el.classList.toggle('act', FLOWS.indexOf(FLOWS[+f.el.dataset.i]) === activeFlow);
+  });
 
   renderer.render(scene, camera);
 }
+setMode('3d');
+measureUI();
 requestAnimationFrame(frame);
