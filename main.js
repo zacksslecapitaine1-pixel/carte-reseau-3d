@@ -482,7 +482,7 @@ function select(id) {
   const p = PARTS.find((x) => x.id === id);
   detailEl.innerHTML =
     '<span class="layer">' + p.layer + '</span><h2>' + p.n + '. ' + p.name + '</h2>' +
-    '<h4>DÉFINITION</h4><p>' + p.def + '</p><h4>RÔLE</h4><p>' + p.role + '</p><h4>ANALOGIE</h4><p>' + p.ana + '</p><h4>EXEMPLE</h4><p>' + p.ex + '</p><div class="keep"><b>À retenir :</b> ' + p.keep + '</div>';
+    '<h4>DÉFINITION</h4><p>' + p.def + '</p><h4>RÔLE</h4><p>' + p.role + '</p><h4>ANALOGIE</h4><p>' + p.ana + '</p><h4>EXEMPLE</h4><p>' + p.ex + '</p><div class="keep"><b>À retenir :</b> ' + p.keep + '</div><button class="actbtn" data-act="' + p.id + '">⚡ Action : voir « ' + p.name + ' » en fonctionnement</button>';
   detailEl.scrollTop = 0;
   listEl.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.id === id));
   Object.entries(pinEls).forEach(([k, el]) => el.classList.toggle('on', k === id));
@@ -835,8 +835,402 @@ function frame(ms) {
     f.el.classList.toggle('act', FLOWS.indexOf(FLOWS[+f.el.dataset.i]) === activeFlow);
   });
 
+  if (typeof actTick === 'function') actTick(t);
   renderer.render(scene, camera);
 }
 setMode('3d');
 measureUI();
 requestAnimationFrame(frame);
+
+/* =====================================================================
+   ACTIONS : mise en fonctionnement réelle des connecteurs et composants
+   ===================================================================== */
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const ease = (x) => x * x * (3 - 2 * x);
+const seg = (t, a, b) => clamp01((t - a) / (b - a));
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+function mkGlow(hex, s, op = 1) {
+  const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: gtex, color: hex, blending: THREE.AdditiveBlending, depthTest: false, transparent: true, opacity: op }));
+  m.scale.setScalar(s); m.renderOrder = 20; return m;
+}
+function mkLabel(text, col, w = 1.7) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgba(6,18,31,.93)'; x.strokeStyle = col; x.lineWidth = 7;
+  x.beginPath(); x.roundRect(5, 5, 502, 118, 26); x.fill(); x.stroke();
+  x.fillStyle = '#fff'; x.font = 'bold 56px "Times New Roman",serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(text, 256, 68);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+  s.scale.set(w, w / 4, 1); s.renderOrder = 30; return s;
+}
+const polyCurve = (pts, y) => new THREE.CatmullRomCurve3(pts.map(([x, z]) => V3(x, y, z)), false, 'catmullrom', 0.2);
+const pathCurve = (i, y = 0.17) => polyCurve(PATHS[i].pts, y);
+function setCable(mesh, pts, r) {
+  mesh.geometry.dispose();
+  mesh.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, r, 8, false);
+  return mesh.userData.curve = new THREE.CatmullRomCurve3(pts);
+}
+function packets(g, n, col, size) {
+  return Array.from({ length: n }, () => { const s = mkGlow(col, size); s.visible = false; g.add(s); return s; });
+}
+function runPackets(arr, curve, t, t0, speed, t1 = 1e9, rev = false) {
+  arr.forEach((s, k) => {
+    const on = t >= t0 && t < t1;
+    s.visible = on;
+    if (!on) return;
+    let u = (((t - t0) * speed) + k / arr.length) % 1;
+    if (rev) u = 1 - u;
+    s.position.copy(curve.getPoint(u));
+  });
+}
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, metalness: 0.5, roughness: 0.4 }, o));
+const ledColor = (m, hex) => { m.emissive.setHex(hex); const f = flatCache.get(m); if (f) f.emissive.setHex(hex); };
+
+const ACT = {};
+
+/* ---- RJ45 : le câble Ethernet vient se brancher ---- */
+ACT.rj45 = {
+  title: 'Connecteur RJ45', cam: { look: [-4.3, 0.7, -0.8], dist: 8.8, dir: [-1, 0.35, 0.85] },
+  steps: [
+    [0, 'Le câble arrive', 'Un câble Ethernet (4 paires torsadées, Cat 5e à 6A) est amené devant le port RJ45 de la carte.'],
+    [3.4, 'Branchement : clic', 'Le connecteur mâle s’enfonce dans le port. Ses 8 contacts dorés touchent les 8 broches et le clip se verrouille.'],
+    [6, 'Lien détecté', 'Les deux extrémités échangent des impulsions : la LED « lien » (verte) s’allume et la vitesse est négociée.'],
+    [8.6, 'Le signal part vers le contrôleur', 'Les transformateurs d’isolation protègent la carte, puis le signal électrique suit les pistes jusqu’au contrôleur MAC + PHY qui le décode en bits.']
+  ],
+  build(g) {
+    const plug = new THREE.Group(); g.add(plug);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.8), mat(0xdfe6f2, { transparent: true, opacity: 0.92, metalness: 0.1, roughness: 0.2 }));
+    plug.add(body);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.42, 0.66), mat(0x1f78b4, { metalness: 0.1 })); boot.position.x = -0.78; plug.add(boot);
+    const clip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.3), mat(0xcfd8e8)); clip.position.set(0.1, 0.28, 0); plug.add(clip);
+    for (let i = 0; i < 8; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.06), mat(0xe0a82e, { metalness: 1, roughness: 0.2 })); c.position.set(0.5, 0.22, -0.3 + i * 0.086); plug.add(c); }
+    const cable = new THREE.Mesh(new THREE.BufferGeometry(), mat(0x1f78b4, { metalness: 0.1, roughness: 0.5 })); g.add(cable);
+    const lbl = mkLabel('Câble Ethernet', '#38bdf8', 1.7); g.add(lbl);
+    const ring = mkGlow(0x38bdf8, 1, 0); ring.position.set(-4.25, 0.55, -0.8); g.add(ring);
+    const hA = mkGlow(0x34d399, 0.9, 0); hA.position.set(-4.25, 1.25, -1.2); g.add(hA);
+    const hB = mkGlow(0xfbbf24, 0.9, 0); hB.position.set(-4.25, 1.25, -0.4); g.add(hB);
+    const chipG = mkGlow(0x38bdf8, 2.2, 0); chipG.position.set(0.4, 0.5, 0); g.add(chipG);
+    const pk = packets(g, 6, 0xfbbf24, 0.5), curve = pathCurve(0, 0.2);
+    const lbl2 = mkLabel('Signal électrique', '#fbbf24', 1.8); lbl2.position.set(-2.2, 1.2, -1.3); lbl2.visible = false; g.add(lbl2);
+    return (t) => {
+      const px = t < 3.4 ? -10 + 4 * ease(seg(t, 0, 3.2)) : -6 + 1.6 * ease(seg(t, 3.4, 4.4));
+      plug.position.set(px, 0.55, -0.8);
+      const sway = (1 - seg(t, 3.4, 4.4)) * Math.sin(t * 2) * 0.05;
+      const back = px - 0.55;
+      setCable(cable, [V3(back, 0.55, -0.8), V3(back - 1.6, 0.5 + sway, -0.9), V3(back - 4, 0.1, -1.6), V3(-15, -0.6, -4)], 0.09);
+      lbl.position.set(px - 1.4, 1.3, -0.8); lbl.visible = t < 3.4;
+      const click = seg(t, 4.3, 4.9);
+      ring.material.opacity = click > 0 && click < 1 ? 1 - click : 0; ring.scale.setScalar(0.6 + click * 1.6);
+      const link = seg(t, 6, 6.4);
+      hA.material.opacity = link * (0.75 + 0.25 * Math.sin(t * 3)); hB.material.opacity = link * (Math.sin(t * 13) > 0.2 ? 0.9 : 0.15);
+      runPackets(pk, curve, t, 8.6, 0.3);
+      lbl2.visible = t > 8.6;
+      chipG.material.opacity = t > 10.2 ? 0.35 + 0.2 * Math.sin(t * 5) : 0;
+    };
+  }
+};
+
+/* ---- SFP+ : module optique + fibre ---- */
+ACT.sfp = {
+  title: 'Cage SFP+', cam: { look: [-4.2, 0.6, 1.0], dist: 9, dir: [-1, 0.4, 0.8] },
+  steps: [
+    [0, 'Insertion du module', 'Le module optique (transceiver SFP+) glisse dans la cage jusqu’au clic : il est interchangeable à chaud.'],
+    [3.6, 'Branchement de la fibre', 'Le connecteur LC (deux brins : émission et réception) vient se verrouiller dans la face avant du module.'],
+    [7, 'La lumière entre', 'Des impulsions lumineuses voyagent dans le cœur de verre de la fibre jusqu’au module.'],
+    [9.4, 'Lumière → électricité', 'Le module convertit la lumière en signaux électriques et les envoie par les pistes au contrôleur. À l’émission, il fait l’inverse avec un laser.']
+  ],
+  build(g) {
+    const mod = new THREE.Group(); g.add(mod);
+    mod.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.34, 0.62), mat(0xaeb9cc, { metalness: 1, roughness: 0.25 })));
+    const bail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.5), mat(0x38bdf8, { metalness: 0.2 })); bail.position.set(-0.78, 0, 0); mod.add(bail);
+    for (const z of [-0.14, 0.14]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.16), mat(0x06121f)); h.position.set(-0.86, 0, z); mod.add(h); }
+    const lc = new THREE.Group(); g.add(lc);
+    for (const z of [-0.13, 0.13]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.22), mat(z < 0 ? 0xfb923c : 0x34d399, { metalness: 0.1 })); lc.add(b); const f = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.14, 10), mat(0xffffff)); f.rotation.z = Math.PI / 2; f.position.x = 0.3; f.position.z = z; lc.add(f); b.position.z = z; }
+    const cable = new THREE.Mesh(new THREE.BufferGeometry(), mat(0xfbbf24, { metalness: 0.1, roughness: 0.5 })); g.add(cable);
+    const lbl = mkLabel('Fibre optique', '#fbbf24', 1.7); g.add(lbl);
+    const lblM = mkLabel('Module SFP+', '#38bdf8', 1.6); lblM.position.set(-4.4, 1.35, 1.0); lblM.visible = false; g.add(lblM);
+    const ring = mkGlow(0x38bdf8, 1, 0); ring.position.set(-4.5, 0.45, 1.0); g.add(ring);
+    const light = packets(g, 7, 0x7dd3fc, 0.42);
+    const lblL = mkLabel('Lumière', '#7dd3fc', 1.2); lblL.visible = false; g.add(lblL);
+    const mg = mkGlow(0x38bdf8, 1.5, 0); mg.position.set(-3.9, 0.5, 1.0); g.add(mg);
+    const el = packets(g, 6, 0xfbbf24, 0.5), curve = pathCurve(1, 0.2);
+    const chipG = mkGlow(0x38bdf8, 2.2, 0); chipG.position.set(0.4, 0.5, 0); g.add(chipG);
+    return (t) => {
+      const mx = -9 + 5.25 * ease(seg(t, 0, 3.2));
+      mod.position.set(mx, 0.45, 1.0);
+      lblM.visible = t > 3.2;
+      const ring_ = seg(t, 3.0, 3.6); ring.material.opacity = ring_ > 0 && ring_ < 1 ? 1 - ring_ : 0; ring.scale.setScalar(0.6 + ring_ * 1.4);
+      const cx = t < 3.6 ? -11 : -11 + 6.15 * ease(seg(t, 3.6, 6.4));
+      lc.position.set(cx, 0.45, 1.0);
+      const back = cx - 0.25;
+      const cv = setCable(cable, [V3(back, 0.45, 1.0), V3(back - 1.8, 0.4, 1.2), V3(back - 4.5, 0.05, 2.2), V3(-16, -0.6, 4.5)], 0.05);
+      lbl.position.set(cx - 1.4, 1.2, 1.0); lbl.visible = t < 7;
+      light.forEach((s, k) => { const on = t > 7; s.visible = on; if (on) { const u = (((t - 7) * 0.5) + k / light.length) % 1; s.position.copy(cv.getPoint(Math.max(0, 0.32 * (1 - u)))); const p = s.position; p.y += 0; } });
+      lblL.visible = t > 7 && t < 9.6; lblL.position.set(-6.2, 1.1, 1.5);
+      mg.material.opacity = t > 8.6 ? 0.5 + 0.3 * Math.sin(t * 6) : 0;
+      runPackets(el, curve, t, 9.4, 0.3);
+      chipG.material.opacity = t > 11 ? 0.35 + 0.2 * Math.sin(t * 5) : 0;
+    };
+  }
+};
+
+/* ---- Contrôleur : construction d’une trame ---- */
+ACT.controleur = {
+  title: 'Contrôleur MAC + PHY', cam: { look: [0.4, 1.0, 0], dist: 7.5, dir: [0.25, 0.65, 0.85] },
+  steps: [
+    [0, 'Les données arrivent', 'Les bits à envoyer arrivent de la mémoire (DMA). Le contrôleur MAC prépare la trame.'],
+    [1.2, 'Adresses MAC', 'Il écrit d’abord l’adresse MAC de destination, puis celle de la source (l’adresse d’usine de la carte), puis le type de protocole.'],
+    [4.4, 'Données et CRC', 'Il ajoute les données utiles, puis calcule le CRC : un code de contrôle qui permettra au destinataire de détecter une erreur.'],
+    [7, 'Le PHY envoie', 'La partie PHY encode la trame en signal sur le support. Aucune ligne de code du système n’a eu à construire cette trame : c’est le matériel qui travaille.']
+  ],
+  build(g) {
+    const defs = [['MAC dest.', 0xfbbf24, 0.42], ['MAC src.', 0x38bdf8, 0.42], ['Type', 0xa78bfa, 0.26], ['Données', 0x3b82f6, 1.0], ['CRC', 0xf87171, 0.3]];
+    const fr = new THREE.Group(); g.add(fr);
+    let off = 0; const total = defs.reduce((a, d) => a + d[2] + 0.03, 0);
+    const parts = defs.map((d, i) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(d[2], 0.14, 0.5), mat(d[1], { emissive: d[1], emissiveIntensity: 0.5 }));
+      const lx = -total / 2 + off + d[2] / 2; off += d[2] + 0.03; m.userData.lx = lx; m.userData.from = V3((i % 2 ? 1 : -1) * 3.2, 1.2 + i * 0.25, (i - 2) * 0.9);
+      m.visible = false; fr.add(m);
+      const l = mkLabel(d[0], '#' + d[1].toString(16).padStart(6, '0'), 0.9); l.position.set(lx, 0.34 + (i % 2) * 0.22, 0); l.visible = false; fr.add(l); m.userData.l = l;
+      return m;
+    });
+    const ring = mkGlow(0x38bdf8, 3, 0); ring.position.set(0.4, 0.45, 0); g.add(ring);
+    const curve = polyCurve([[0.4, 0], [0.5, 1.0], [0.6, 2.0], [0.6, 2.7]], 1.7);
+    const start = V3(0.4, 1.7, 0);
+    return (t) => {
+      parts.forEach((m, i) => {
+        const t0 = 0.8 + i * 1.2, k = ease(seg(t, t0, t0 + 0.9));
+        m.visible = t >= t0; m.userData.l.visible = t >= t0 + 0.9 && t < 7.2;
+        m.position.set(m.userData.lx, 0, 0);
+        m.position.lerp(V3(m.userData.lx, 0, 0), 1); m.position.x = m.userData.from.x * (1 - k) + m.userData.lx * k; m.position.y = m.userData.from.y * (1 - k); m.position.z = m.userData.from.z * (1 - k);
+      });
+      const go = ease(seg(t, 7, 11));
+      if (t < 7) fr.position.copy(start); else fr.position.copy(curve.getPoint(Math.min(0.999, go)));
+      ring.material.opacity = 0.35 + 0.25 * Math.sin(t * 4) * (t > 0.5 ? 1 : 0);
+    };
+  }
+};
+
+/* ---- Dissipateur : chaleur évacuée ---- */
+ACT.dissipateur = {
+  title: 'Dissipateur thermique', cam: { look: [0.4, 0.8, 0], dist: 6.5, dir: [0.7, 0.55, 0.9] },
+  steps: [
+    [0, 'La puce chauffe', 'À 10 Gbit/s et plus, le contrôleur dissipe plusieurs watts : sa température monte.'],
+    [3, 'La chaleur monte', 'La chaleur passe dans la base métallique puis dans les ailettes, qui multiplient la surface d’échange avec l’air.'],
+    [6, 'L’air l’emporte', 'Le flux d’air du boîtier traverse les ailettes et évacue la chaleur.'],
+    [9.5, 'Sans dissipateur', 'Sans refroidissement, la puce ralentit pour se protéger : c’est le bridage thermique, et le débit baisse.']
+  ],
+  build(g) {
+    const hot = mkGlow(0xff5522, 2.6, 0); hot.position.set(0.4, 0.3, 0); g.add(hot);
+    const heat = Array.from({ length: 16 }, (_, i) => { const s = mkGlow(i % 2 ? 0xff8a3d : 0xffb347, 0.7, 0); s.userData = { x: -0.5 + (i % 8) * 0.14 + 0.4, z: -0.6 + ((i * 5) % 8) * 0.17, p: i / 16 }; g.add(s); return s; });
+    const air = Array.from({ length: 12 }, (_, i) => { const s = mkGlow(0x7dd3fc, 0.45, 0); s.userData = { x: -0.16 + (i % 6) * 0.14 + 0.4, p: i / 12, y: 0.5 + (i % 2) * 0.12 }; g.add(s); return s; });
+    const lbl = mkLabel('Chaleur', '#ff8a3d', 1.2); lbl.position.set(0.4, 2.4, 0); g.add(lbl);
+    const lblA = mkLabel('Air frais', '#7dd3fc', 1.3); lblA.position.set(0.4, 1.35, -2.4); lblA.visible = false; g.add(lblA);
+    return (t) => {
+      hot.material.opacity = (t < 9.5 ? Math.min(1, t / 3) * (t > 6 ? 0.5 : 1) : 1) * (0.7 + 0.3 * Math.sin(t * 3));
+      hot.scale.setScalar(t > 9.5 ? 4 : 2.6);
+      heat.forEach((s) => { const on = t > 2.5; const u = ((t - 2.5) * 0.28 + s.userData.p) % 1; s.visible = on; s.position.set(s.userData.x + Math.sin(t * 2 + s.userData.p * 9) * 0.05, 0.4 + u * 1.9, s.userData.z); s.material.opacity = on ? Math.sin(u * Math.PI) * (t > 6 ? 0.55 : 0.9) : 0; });
+      air.forEach((s) => { const on = t > 6 && t < 9.5; s.visible = on; const u = ((t - 6) * 0.35 + s.userData.p) % 1; s.position.set(s.userData.x, s.userData.y, -2.4 + u * 4.8); s.material.opacity = on ? Math.sin(u * Math.PI) : 0; });
+      lbl.visible = t > 2.5; lblA.visible = t > 6 && t < 9.5;
+      lbl.position.y = t > 9.5 ? 2.6 : 2.4; lbl.material.opacity = 1;
+    };
+  }
+};
+
+/* ---- PCIe : le bus vers la RAM (DMA) ---- */
+ACT.pcie = {
+  title: 'Connecteur PCI Express', cam: { look: [1.0, -0.2, 3.4], dist: 11, dir: [0.45, 0.85, 0.9] },
+  steps: [
+    [0, 'La carte mère apparaît', 'Le connecteur doré s’insère dans un slot PCI Express de la carte mère, relié au processeur et à la mémoire.'],
+    [3, 'Contacts et lignes', 'Chaque contact sert une ligne de données (x1, x4, x8…) : plus il y en a, plus la bande passante est grande.'],
+    [5.6, 'Réception : DMA', 'Le contrôleur écrit les trames directement en RAM par le bus, sans mobiliser le processeur : c’est le DMA.'],
+    [10, 'Émission', 'Dans l’autre sens, le pilote dépose les paquets en RAM et la carte vient les lire pour les envoyer sur le réseau.']
+  ],
+  build(g) {
+    const mb = new THREE.Group(); g.add(mb);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(11, 0.12, 5.4), mat(0x14532d, { metalness: 0.2 })); board.position.set(0.8, -0.66, 4.3); mb.add(board);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.6, 0.5), mat(0x1f2937)); slot.position.set(0.7, -0.3, 2.28); mb.add(slot);
+    const cpu = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 1.3), mat(0x9aa7bd, { metalness: 1, roughness: 0.3 })); cpu.position.set(-2.2, -0.45, 4.6); mb.add(cpu);
+    for (const z of [4.3, 4.9]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.6, 1.6), mat(0x0e7490)); r.position.set(3.6, -0.3, z); mb.add(r); for (let i = 0; i < 4; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.24), mat(0x06121f)); c.position.set(3.6, -0.15, z - 0.55 + i * 0.37); mb.add(c); } }
+    const lc = mkLabel('Processeur', '#a78bfa', 1.5); lc.position.set(-2.2, 0.35, 4.6); mb.add(lc);
+    const lr = mkLabel('Mémoire RAM', '#38bdf8', 1.7); lr.position.set(3.6, 0.7, 4.6); mb.add(lr);
+    const ls = mkLabel('Slot PCIe', '#fbbf24', 1.3); ls.position.set(-1.3, -0.1, 2.9); mb.add(ls);
+    const fg = Array.from({ length: 10 }, (_, i) => { const s = mkGlow(0xfbbf24, 0.55, 0); s.position.set(-0.7 + i * 0.35, 0.05, 2.28); g.add(s); return s; });
+    const dma = polyCurve([[0.4, 0], [0.5, 1.2], [0.6, 2.35], [0.7, 3.1], [2.4, 3.8], [3.5, 4.3]], 0.0);
+    const pts = dma.points; pts[3].y = -0.45; pts[4].y = -0.5; pts[5].y = -0.3; pts[2].y = 0.0;
+    const dmaC = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.3);
+    const line = new THREE.Mesh(new THREE.TubeGeometry(dmaC, 50, 0.025, 6, false), new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 })); line.visible = false; g.add(line);
+    const down = packets(g, 7, 0x38bdf8, 0.5), up = packets(g, 7, 0xa78bfa, 0.5);
+    const ld = mkLabel('Sans le processeur', '#34d399', 1.9); ld.position.set(0.8, 0.7, 3.3); ld.visible = false; g.add(ld);
+    return (t) => {
+      const k = ease(seg(t, 0, 2.4)); mb.position.y = -3.2 * (1 - k);
+      fg.forEach((s, i) => { s.material.opacity = t > 3 ? 0.5 + 0.4 * Math.sin(t * 6 - i * 0.7) : 0; });
+      line.visible = t > 5.6;
+      runPackets(down, dmaC, t, 5.6, 0.22, 10);
+      runPackets(up, dmaC, t, 10, 0.22, 1e9, true);
+      ld.visible = t > 6.5 && t < 10; lc.material.opacity = t > 5.6 ? 0.45 : 1;
+    };
+  }
+};
+
+/* ---- Firmware : la carte démarre ---- */
+ACT.firmware = {
+  title: 'Mémoire flash (firmware)', cam: { look: [1.8, 0.2, -0.8], dist: 6.2, dir: [0.4, 0.9, 0.7] },
+  steps: [
+    [0, 'Mise sous tension', 'L’ordinateur démarre : la carte reçoit son alimentation par le bus PCIe.'],
+    [2.6, 'Lecture du firmware', 'Le contrôleur lit dans la mémoire flash son micrologiciel et sa configuration.'],
+    [5.5, 'Adresse MAC d’usine', 'La flash contient aussi l’adresse MAC gravée à la fabrication (BIA). Elle est chargée dans le contrôleur.'],
+    [8.5, 'Carte prête', 'La carte est configurée : le pilote du système peut maintenant la prendre en charge.']
+  ],
+  build(g) {
+    const fl = mkGlow(0xffffff, 1.4, 0); fl.position.set(2.6, 0.2, -1.3); g.add(fl);
+    const pk = packets(g, 6, 0xffffff, 0.4), curve = polyCurve([[2.6, -1.3], [2.0, -1.0], [1.3, -0.5], [0.9, -0.1]], 0.2);
+    const mac = mkLabel('MAC 3C:52:82:1A:9B:07', '#34d399', 3.0); mac.position.set(2.6, 1.0, -1.3); mac.visible = false; g.add(mac);
+    const pk2 = packets(g, 4, 0x34d399, 0.5);
+    const lf = mkLabel('Firmware', '#fff', 1.3); lf.position.set(2.6, 0.7, -1.9); g.add(lf);
+    const cg = mkGlow(0x34d399, 2.2, 0); cg.position.set(0.4, 0.5, 0); g.add(cg);
+    return (t) => {
+      fl.material.opacity = t < 0.4 ? 0 : 0.5 + 0.4 * Math.sin(t * 5);
+      runPackets(pk, curve, t, 2.6, 0.35, 5.5);
+      mac.visible = t > 5.5; mac.position.y = 1.0 + 0.05 * Math.sin(t * 3);
+      runPackets(pk2, curve, t, 5.5, 0.3, 8.5);
+      cg.material.opacity = t > 8.5 ? 0.5 + 0.2 * Math.sin(t * 4) : 0;
+    };
+  }
+};
+
+/* ---- Alimentation : 12 V → tension de la puce ---- */
+ACT.alim = {
+  title: 'Régulateurs et condensateurs', cam: { look: [2.0, 0.2, 1.2], dist: 7.5, dir: [0.5, 0.85, 0.75] },
+  steps: [
+    [0, 'Tension du bus', 'Le slot PCIe apporte 12 V et 3,3 V à la carte.'],
+    [3, 'Régulation', 'Les régulateurs abaissent la tension et les condensateurs lissent les à-coups.'],
+    [6.5, 'Tension de la puce', 'La puce reçoit environ 1 V, propre et stable : indispensable pour des signaux haute vitesse fiables.']
+  ],
+  build(g) {
+    const A = polyCurve([[1.9, 2.3], [2.4, 1.7], [2.8, 1.1]], 0.2), B = polyCurve([[2.6, 0.5], [1.7, 0.3], [1.2, 0.1]], 0.2);
+    const r = packets(g, 6, 0xf87171, 0.5), b = packets(g, 6, 0x7dd3fc, 0.3);
+    const l1 = mkLabel('12 V · 3,3 V', '#f87171', 1.7); l1.position.set(1.4, 0.9, 2.3); g.add(l1);
+    const l2 = mkLabel('Régulateurs', '#fbbf24', 1.6); l2.position.set(2.8, 1.1, 0.7); g.add(l2);
+    const l3 = mkLabel('≈ 1 V', '#7dd3fc', 1.0); l3.position.set(1.6, 0.8, 0.4); g.add(l3);
+    const cg = mkGlow(0xfbbf24, 2.2, 0); cg.position.set(2.8, 0.4, 0.7); g.add(cg);
+    return (t) => {
+      runPackets(r, A, t, 0, 0.3);
+      cg.material.opacity = t > 3 ? 0.45 + 0.25 * Math.sin(t * 4) : 0;
+      runPackets(b, B, t, 3, 0.4);
+      l2.visible = t > 3; l3.visible = t > 6.5;
+    };
+  }
+};
+
+/* ---- Pistes : paires différentielles ---- */
+ACT.pistes = {
+  title: 'Pistes différentielles', cam: { look: [-1.6, 0.1, 0], dist: 7, dir: [0.2, 1, 0.45] },
+  steps: [
+    [0, 'Deux fils par voie', 'Chaque signal circule sur une paire de pistes : une piste + et une piste −.'],
+    [3, 'Signaux opposés', 'Les deux pistes portent des signaux inverses. Le récepteur ne regarde que leur différence.'],
+    [6.5, 'Le bruit s’annule', 'Un parasite touche les deux pistes de la même façon : il disparaît dans la différence. D’où des débits très élevés.']
+  ],
+  build(g) {
+    const sets = [];
+    [0, 1].forEach((pi) => { const crv = [-1, 1].map((k) => polyCurve(PATHS[pi].pts.map(([x, z]) => [x + PATHS[pi].off[0] * k * 0.1, z + PATHS[pi].off[1] * k * 0.1]), 0.17)); sets.push([crv[0], packets(g, 5, 0xf87171, 0.4)]); sets.push([crv[1], packets(g, 5, 0x7dd3fc, 0.4)]); });
+    const lp = mkLabel('Piste +', '#f87171', 1.1); lp.position.set(-2.4, 0.9, -1.3); g.add(lp);
+    const lm = mkLabel('Piste −', '#7dd3fc', 1.1); lm.position.set(-2.4, 0.9, -0.3); g.add(lm);
+    const noise = mkLabel('Parasite', '#fbbf24', 1.2); noise.position.set(-1.1, 1.1, -0.4); noise.visible = false; g.add(noise);
+    return (t) => {
+      sets.forEach(([c, p]) => runPackets(p, c, t, 0, 0.28));
+      noise.visible = t > 6.5; noise.scale.x = 1.2 * (1 + 0.1 * Math.sin(t * 9));
+    };
+  }
+};
+
+/* ---- LED : diagnostic ---- */
+ACT.leds = {
+  title: 'Voyants LED', cam: { look: [-4.3, 1.1, -0.8], dist: 5.2, dir: [-1, 0.35, 0.7] },
+  steps: [
+    [0, 'Pas de lien', 'Câble débranché : les deux voyants sont éteints. Premier réflexe : vérifier le câble et le port.'],
+    [2.6, 'Lien établi', 'Câble branché : la LED « lien » (verte) s’allume, fixe.'],
+    [5.2, 'Activité', 'La LED « activité » (orange) clignote à chaque passage de trafic.'],
+    [8.4, 'Diagnostic', 'Lien éteint malgré le câble ? Tester un autre câble, un autre port, puis vérifier le pilote.']
+  ],
+  build(g, S) {
+    const hA = mkGlow(0x34d399, 0.9, 0); hA.position.set(-4.25, 1.25, -1.2); g.add(hA);
+    const hB = mkGlow(0xfbbf24, 0.9, 0); hB.position.set(-4.25, 1.25, -0.4); g.add(hB);
+    const lA = mkLabel('LED lien', '#34d399', 1.2); lA.position.set(-4.9, 1.75, -1.2); g.add(lA);
+    const lB = mkLabel('LED activité', '#fbbf24', 1.5); lB.position.set(-4.9, 1.75, -0.2); g.add(lB);
+    S.ledHold = true;
+    return (t) => {
+      const link = t > 2.6 && t < 8.4, act_ = t > 5.2 && t < 8.4;
+      S.ledA = link ? 1.6 : 0.03; S.ledB = act_ ? (Math.sin(t * 13) > 0.1 ? 2 : 0.2) : 0.03;
+      hA.material.opacity = link ? 0.8 + 0.15 * Math.sin(t * 3) : 0; hB.material.opacity = act_ ? (Math.sin(t * 13) > 0.1 ? 0.9 : 0.1) : 0;
+    };
+  }
+};
+
+/* ---- Exécution ---- */
+let act = null;
+const actCap = $('actcap');
+function actStop() {
+  if (!act) return;
+  scene.remove(act.g);
+  act.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  flowOn = act.flowOn; $('bFlow').classList.toggle('on', flowOn);
+  act = null;
+  actCap.classList.remove('show');
+  document.querySelectorAll('#acts button').forEach((b) => b.classList.remove('on'));
+  document.body.classList.remove('acting');
+}
+function actStart(id) {
+  if (quiz) return;
+  const D = ACT[id]; if (!D) return;
+  const prevFlow = act ? act.flowOn : flowOn;
+  actStop(); stopTour();
+  explodeGoal = 0; $('bExplode').classList.remove('on');
+  select(id);
+  flyTo({ look: D.cam.look, dir: D.cam.dir, dist: D.cam.dist * 1.75 });
+  const g = new THREE.Group(); scene.add(g);
+  const S = {};
+  const upd = D.build(g, S);
+  act = { id, D, g, upd, S, t0: performance.now() / 1000, step: -1, flowOn: prevFlow };
+  flowOn = false; $('bFlow').classList.remove('on');
+  document.querySelectorAll('#acts button').forEach((b) => b.classList.toggle('on', b.dataset.act === id));
+  document.body.classList.add('acting');
+  actCap.classList.add('show');
+}
+function actTick(t) {
+  if (!act) return;
+  const tt = Math.max(0, t - act.t0);
+  act.upd(tt, act.S);
+  if (act.S.ledHold) { setLive(ledA, act.S.ledA); setLive(ledB, act.S.ledB); }
+  let k = 0; act.D.steps.forEach((s, i) => { if (tt >= s[0]) k = i; });
+  if (k !== act.step) {
+    act.step = k; const s = act.D.steps[k];
+    actCap.querySelector('.ac-h').textContent = '⚡ ACTION · ' + act.D.title.toUpperCase();
+    actCap.querySelector('.ac-n').textContent = 'Étape ' + (k + 1) + ' / ' + act.D.steps.length;
+    actCap.querySelector('.ac-t').textContent = s[1];
+    actCap.querySelector('.ac-p').textContent = s[2];
+  }
+}
+function actReplay() { if (act) { const id = act.id; actStart(id); } }
+$('acReplay').onclick = actReplay;
+$('acClose').onclick = () => { actStop(); };
+const ACT_LIST = [['rj45', 'RJ45'], ['sfp', 'SFP+'], ['controleur', 'Contrôleur'], ['dissipateur', 'Dissipateur'], ['pcie', 'PCIe'], ['firmware', 'Firmware'], ['alim', 'Alimentation'], ['pistes', 'Pistes'], ['leds', 'LED']];
+ACT_LIST.forEach(([id, nm]) => {
+  const b = document.createElement('button'); b.dataset.act = id; b.textContent = 'Action ' + nm;
+  b.title = 'Voir ' + nm + ' en fonctionnement';
+  b.onclick = () => (act && act.id === id ? actStop() : actStart(id));
+  $('acts').appendChild(b);
+});
+detailEl.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) actStart(b.dataset.act); });
+
+/* API pour le parcours guidé */
+window.SITE = {
+  select, deselect, selectFlow, setMode, goHome, actStart, actStop,
+  actSeek: (s) => { if (act) act.t0 = performance.now() / 1000 - s; },
+  explode: (on) => { if (!!explodeGoal !== !!on) $('bExplode').click(); },
+  quiz: (on) => { if (!!quiz !== !!on) $('bQuiz').click(); },
+  reset() { actStop(); if (quiz) $('bQuiz').click(); stopTour(); explodeGoal = 0; $('bExplode').classList.remove('on'); setFlow(-1); deselect(); setMode('3d'); goHome(); controls.autoRotate = true; },
+  get mode() { return mode; }
+};
+

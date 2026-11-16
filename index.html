@@ -7,7 +7,7 @@
 <meta name="description" content="Explorez en 3D les composants d’une carte réseau (NIC) : port RJ45, cage SFP+, contrôleur MAC/PHY, connecteur PCIe, firmware. Projet du groupe 17 (ESGIS, Licence 1), réalisé par Zackss et son équipe.">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
 <style>
-:root{--bg:#0b1220;--card:rgba(17,27,52,.82);--line:#2a3c66;--ink:#e6edf7;--mut:#9fb0cc;--cy:#38bdf8;--vi:#a78bfa;--am:#fbbf24}
+:root{--hubh:56px;--bg:#0b1220;--card:rgba(17,27,52,.82);--line:#2a3c66;--ink:#e6edf7;--mut:#9fb0cc;--cy:#38bdf8;--vi:#a78bfa;--am:#fbbf24}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Times New Roman",Times,"Liberation Serif",serif;overflow:hidden}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
@@ -15,7 +15,7 @@ header{position:fixed;left:24px;top:18px;z-index:5;pointer-events:none}
 header .tag{font-weight:600;font-size:12px;line-height:1;font-family:inherit;letter-spacing:.2em;color:var(--cy)}
 header h1{font-size:clamp(22px,3vw,34px);margin-top:8px;letter-spacing:-.02em}
 header p{color:var(--mut);font-size:14px;margin-top:4px}
-#panel{position:fixed;right:16px;top:16px;bottom:84px;width:min(400px,92vw);z-index:6;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+#panel{position:fixed;right:16px;top:16px;bottom:calc(var(--hubh) + 118px);width:min(400px,92vw);z-index:6;display:flex;flex-direction:column;gap:12px;overflow:hidden}
 .glass{background:var(--card);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 20px 60px rgba(0,0,0,.45)}
 #list{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:36%;overflow:auto}
 #list button{display:flex;align-items:center;gap:8px;background:transparent;color:var(--ink);border:1px solid transparent;border-radius:12px;padding:7px 8px;font-weight:500;font-size:13px;line-height:1.2;font-family:inherit;text-align:left;cursor:pointer;transition:.18s}
@@ -28,20 +28,20 @@ header p{color:var(--mut);font-size:14px;margin-top:4px}
 #detail h4{font-weight:600;font-size:12px;line-height:1;font-family:inherit;letter-spacing:.14em;color:var(--cy);margin:16px 0 6px}
 #detail p{color:#c9d5ea;font-size:15px;line-height:1.55}
 #detail .keep{margin-top:16px;padding:12px 14px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);color:#fde68a;font-size:14px;line-height:1.5}
-#bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:7;display:flex;gap:8px;padding:8px;flex-wrap:wrap;justify-content:center;max-width:96vw}
+#bar{width:max-content;position:fixed;left:50%;bottom:calc(var(--hubh) + 10px);transform:translateX(-50%);z-index:7;display:flex;gap:8px;padding:8px;flex-wrap:wrap;justify-content:center;max-width:96vw}
 #bar button{background:rgba(30,47,87,.9);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px;line-height:1;font-family:inherit;cursor:pointer;transition:.18s}
 #bar button:hover{border-color:var(--cy);transform:translateY(-2px)}
 #bar button.on{background:var(--cy);color:#06121f;border-color:var(--cy)}
 #pins{position:fixed;inset:0;pointer-events:none;z-index:4}
-.pin{position:absolute;left:0;top:0;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;border:2px solid #fff;background:rgba(56,189,248,.9);color:#06121f;font-weight:700;font-size:13px;line-height:1;font-family:inherit;display:grid;place-items:center;cursor:pointer;pointer-events:auto;box-shadow:0 0 0 0 rgba(56,189,248,.7);animation:pulse 2.2s infinite;transition:background .2s}
+.pin{position:absolute;left:0;top:0;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:2px solid #fff;background:rgba(56,189,248,.9);color:#06121f;font-weight:700;font-size:11px;line-height:1;font-family:inherit;display:grid;place-items:center;cursor:pointer;pointer-events:auto;box-shadow:0 0 0 0 rgba(56,189,248,.7);animation:pulse 2.2s infinite;transition:background .2s}
 .pin.on{background:var(--am);animation:none;box-shadow:0 0 0 6px rgba(251,191,36,.3)}
 @keyframes pulse{70%{box-shadow:0 0 0 14px rgba(56,189,248,0)}100%{box-shadow:0 0 0 0 rgba(56,189,248,0)}}
 #tip{position:fixed;z-index:8;pointer-events:none;background:#06121f;border:1px solid var(--cy);color:var(--ink);padding:6px 10px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .12s;white-space:nowrap}
-#hint{position:fixed;left:24px;bottom:22px;z-index:5;color:var(--mut);font-size:13px;line-height:1.6;pointer-events:none}
+#hint{position:fixed;left:24px;bottom:calc(var(--hubh) + 132px);z-index:5;color:var(--mut);font-size:13px;line-height:1.6;pointer-events:none}
 #hint b{color:var(--ink)}
 @media (max-width:860px){
  header p,#hint{display:none}
- #panel{top:auto;left:8px;right:8px;bottom:70px;width:auto;height:46vh}
+ #panel{top:auto;left:8px;right:8px;bottom:calc(var(--hubh) + 118px);width:auto;height:36vh}
  #list{grid-template-columns:1fr 1fr 1fr;max-height:34%}
  #bar button{padding:9px 10px;font-size:13px}
 }
@@ -72,10 +72,10 @@ header p{color:var(--mut);font-size:14px;margin-top:4px}
 #legend .fn{flex:none;min-width:30px;height:22px;border-radius:7px;display:grid;place-items:center;color:#06121f;font-weight:700;font-size:12px}
 .pin{display:grid;transition:opacity .25s,background .2s,filter .25s}
 .pin .nn{pointer-events:none}
-.pin .pl{display:none;position:absolute;left:34px;top:50%;transform:translateY(-50%);white-space:nowrap;background:rgba(6,18,31,.92);color:var(--ink);border:1px solid var(--cy);border-radius:8px;padding:4px 9px;font-size:14px;font-weight:600;pointer-events:none}
+.pin .pl{display:none;position:absolute;left:26px;top:50%;transform:translateY(-50%);white-space:nowrap;background:rgba(6,18,31,.92);color:var(--ink);border:1px solid var(--cy);border-radius:8px;padding:4px 9px;font-size:14px;font-weight:600;pointer-events:none}
 body.m2d .pin .pl,.pin:hover .pl,.pin.on .pl{display:block}
 body.quiz .pin .pl{display:none!important}
-.pin.flip .pl{left:auto;right:34px}
+.pin.flip .pl{left:auto;right:26px}
 .pin.up .pl{left:50%;top:-12px;right:auto;transform:translate(-50%,-100%)}
 .pin.occ{opacity:.28;filter:saturate(.3);animation:none;pointer-events:none}
 .pin.gone{opacity:0;pointer-events:none}
@@ -87,13 +87,14 @@ body.quiz .pin .pl{display:none!important}
 body[data-mode="real"]{--card:rgba(24,27,34,.82);--line:#3a404c}
 body[data-mode="2d"]{--card:rgba(8,32,58,.86);--line:#2c5b8c}
 @media (max-width:860px){
- #modes{top:auto;left:8px;transform:none;bottom:128px}
+ #modes{top:auto;left:8px;transform:none;bottom:calc(var(--hubh) + 190px)}
  #modes button{padding:8px 12px;font-size:14px}
  #legend{display:none}
 }
 #score{display:inline-block;margin-left:8px;color:var(--am);font-weight:700}
 body.quiz #list{display:none}
 </style>
+<link rel="stylesheet" href="./hub.css">
 </head>
 <body>
 <canvas id="c" aria-label="Modèle 3D interactif d’une carte réseau"></canvas>
@@ -128,5 +129,20 @@ body.quiz #list{display:none}
 <div id="hint"><b>Glisser</b> pour tourner · <b>Molette</b> pour zoomer · <b>Clic</b> sur une pièce<br>Raccourcis : 1-9 pièces · ← → · M mode 2D/3D/Réaliste · T visite · E éclatée · F flux</div>
 <script type="module" src="./main.js"></script>
 <script>document.getElementById("go").onclick=function(){document.getElementById("welcome").style.display="none"};document.getElementById("bTeam").onclick=function(){document.getElementById("welcome").style.display="grid"}</script>
+
+<div id="acts" class="glass" role="group" aria-label="Actions : mise en fonctionnement"><span class="al">⚡ ACTION</span></div>
+<div id="actcap" class="glass"><div class="ac-top"><span class="ac-h"></span><span class="ac-n"></span></div><div class="ac-t"></div><div class="ac-p"></div><div class="ac-b"><button id="acReplay">↻ Rejouer</button><button id="acClose">✕ Fermer</button></div></div>
+<section id="ov-videos" class="ov" hidden></section>
+<section id="ov-slides" class="ov" hidden><iframe id="fr-slides" title="Diaporama" allowfullscreen></iframe></section>
+<section id="ov-doc" class="ov" hidden>
+ <div class="dbar"><b>Document · Exposé sur la carte réseau</b><span class="sp"></span>
+ <a class="dl" href="doc/Expose-Carte-Reseau-Groupe17.docx" download>⬇ Télécharger le Word (.docx)</a>
+ <a class="dl alt" href="doc/Programme-de-passage-Expose-Groupe17.docx" download>⬇ Programme de passage (.docx)</a>
+ <a class="dl alt" href="doc/Expose-Carte-Reseau-Groupe17.pdf" target="_blank" rel="noopener">Ouvrir le PDF</a></div>
+ <iframe id="fr-doc" title="Document" ></iframe>
+</section>
+<div id="hub"><div id="pc" hidden></div><nav id="hubbar" aria-label="Navigation du projet">
+ <button data-v="site" class="on">🗺 Carte 3D</button><button data-v="videos">🎬 Vidéo</button><button data-v="slides">📊 Diaporama</button><button data-v="doc">📄 Document</button><button data-v="pc" id="hpc">🧭 Parcours</button></nav></div>
+<script src="./hub.js"></script>
 </body>
 </html>
