@@ -627,6 +627,7 @@ $('bFull').onclick = () => {
   else document.documentElement.requestFullscreen?.();
 };
 addEventListener('keydown', (e) => {
+  if (document.querySelector('.ov:not([hidden])') || document.getElementById('welcome').style.display !== 'none' && getComputedStyle(document.getElementById('welcome')).display !== 'none') return;
   if (e.key === 'ArrowRight') { stopTour(); step(1); }
   else if (e.key === 'ArrowLeft') { stopTour(); step(-1); }
   else if (e.key === 't' || e.key === 'T') $('bTour').click();
@@ -1174,7 +1175,7 @@ const actCap = $('actcap');
 function actStop() {
   if (!act) return;
   scene.remove(act.g);
-  act.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  act.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map && o.material.map !== gtex) o.material.map.dispose(); o.material.dispose(); } });
   flowOn = act.flowOn; $('bFlow').classList.toggle('on', flowOn);
   act = null;
   actCap.classList.remove('show');
