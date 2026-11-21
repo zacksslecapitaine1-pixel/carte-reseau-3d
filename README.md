@@ -1,6 +1,6 @@
 # Carte réseau 3D — Explorateur interactif
 
-Exposé du **Groupe 17** (ESGIS, Licence 1, cours de M. ZOBINOU) · réalisé par **Zackss (Dev.zak)**.
+Exposé du **Groupe 21** (ESGIS, Licence 1, cours de M. ZOBINOU) · réalisé par **Zackss (Dev.zak)**.
 
 Explorez en 3D une carte réseau (NIC) : cliquez sur chaque pièce (port RJ45, cage SFP+, contrôleur MAC/PHY, dissipateur, connecteur PCIe, firmware, alimentation, pistes, LED) pour afficher sa définition, son rôle et l'essentiel à retenir.
 

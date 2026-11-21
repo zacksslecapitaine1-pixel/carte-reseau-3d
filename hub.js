@@ -7,7 +7,7 @@ function view(v){
   Object.keys(ovs).forEach(function(k){ovs[k].hidden=k!==v});
   if(cur==="videos"&&v!=="videos"){var vv=document.querySelector("#ov-videos video");if(vv)vv.pause()}
   cur=v;mark(v);
-  if(v==="doc"&&!$("fr-doc").src){$("fr-doc").src="doc/Expose-Carte-Reseau-Groupe17.pdf#view=FitH"}
+  if(v==="doc"&&!$("fr-doc").src){$("fr-doc").src="doc/Expose-Carte-Reseau-Groupe21.pdf#view=FitH"}
   if(v==="slides"){ensureSlides()}
 }
 var sLoaded=false;
@@ -16,64 +16,86 @@ function ensureSlides(id){var f=$("fr-slides");if(!f.getAttribute("src")){f.onlo
 function slide(id){view("slides");ensureSlides(id);setTimeout(function(){try{$("fr-slides").contentWindow.focus()}catch(e){}},300)}
 /* Vidéos */
 function grid(){var o=ovs.videos;o.innerHTML='<div class="ovh"><h2>Vidéos explicatives</h2><p>7 courtes vidéos (environ 1 minute chacune). Cliquez sur une vidéo pour la lire.</p></div><div class="vg"></div>';
-  VID.forEach(function(v,i){var b=document.createElement("button");b.className="vc";b.innerHTML='<div class="th"><img loading="lazy" alt="" src="media/poster'+(i+1)+'.jpg"><span class="pl">▶</span><span class="du">'+v[1]+'</span></div><div class="nm"><b>VIDÉO '+(i+1)+'</b><span>'+v[0]+'</span></div>';b.onclick=function(){play(i+1)};o.querySelector(".vg").appendChild(b)})}
+  VID.forEach(function(v,i){var b=document.createElement("button");b.className="vc";b.innerHTML='<div class="th"><img loading="lazy" alt="" src="media/poster'+(i+1)+'.jpg"><span class="pl">▶</span><span class="du">'+v[1]+'</span></div><div class="nm"><b>VIDÉO '+(i+1)+'</b><span>'+v[0]+'</span></div>';b.onclick=function(){play(i+1)};b.onmouseenter=b.onfocus=function(){prewarm(i+1)};o.querySelector(".vg").appendChild(b)})}
 function play(n){view("videos");var o=ovs.videos,v=VID[n-1];
-  o.innerHTML='<div class="vp"><div class="vt">Vidéo '+n+' · '+v[0]+'</div><video controls autoplay playsinline poster="media/poster'+n+'.jpg" src="media/video'+n+'.mp4"></video><div class="vb"><button id="vL">← Liste des vidéos</button><button id="vP"'+(n<2?" disabled":"")+'>◀ Précédente</button><button id="vN"'+(n>6?" disabled":"")+'>Suivante ▶</button></div></div>';
+  o.innerHTML='<div class="vp"><div class="vt">Vidéo '+n+' · '+v[0]+'</div><video controls autoplay playsinline preload="auto" poster="media/poster'+n+'.jpg" src="media/video'+n+'.mp4"></video><div class="vb"><button id="vL">← Liste des vidéos</button><button id="vP"'+(n<2?" disabled":"")+'>◀ Précédente</button><button id="vN"'+(n>6?" disabled":"")+'>Suivante ▶</button></div></div>';
   $("vL").onclick=grid;$("vP").onclick=function(){play(n-1)};$("vN").onclick=function(){play(n+1)};
-  var vd=o.querySelector("video");vd.onended=function(){};var p=vd.play();if(p&&p.catch)p.catch(function(){})}
+  var vd=o.querySelector("video");vd.onended=function(){};vd.addEventListener("canplaythrough",function(){if(n<7)prewarm(n+1)},{once:true});var p=vd.play();if(p&&p.catch)p.catch(function(){})}
 grid();
 /* Barre du bas */
 [].forEach.call(document.querySelectorAll("#hubbar button[data-v]"),function(b){b.onclick=function(){var k=b.dataset.v;
   if(k==="pc"){pcOn?pcStop():pcStart();return}
   if(k==="site"){view("site");return}
   if(k==="videos"){grid()}view(k)}});
-/* Parcours guidé */
-var P1="Personne 1",P2="Personne 2",P3="Personne 3",P4="Personne 4",P5="Personne 5",P6="Personne 6";
+/* Parcours guidé : groupe 21, 10 minutes */
+var M="Michelle (cheffe)",O="Oumate",E="Élisée",L="Lucrèce",T="Théodore";
 function site(fn){return function(){view("site");var S=window.SITE;if(S)fn(S)}}
-var ST=[
-{w:P1,h:"Ouverture",x:"Diaporama : titre, équipe, sommaire, contexte et problématique (diapos 1 à 5). Pas encore de site : on pose d’abord le sujet.",a:function(){slide("s01-titre")}},
-{w:P1,h:"Vidéo 1 · Qu’est-ce qu’une carte réseau ?",x:"Lancer la vidéo 1, tout le monde regarde. Elle fixe la définition avant d’entrer dans le détail.",a:function(){play(1)}},
-{w:P2,h:"Définition, noms, lieux, exemples, histoire",x:"Diaporama, diapos 6 à 10 (définition, noms, où on la trouve, trois exemples, évolution des débits).",a:function(){slide("s06-definition")}},
-{w:P2,h:"Vidéo 2 · OSI et TCP/IP",x:"Lancer la vidéo 2 pour introduire les couches.",a:function(){play(2)}},
-{w:P2,h:"Modèle OSI et TCP/IP",x:"Diaporama, diapos 11 et 12 : la carte travaille aux couches 1 et 2.",a:function(){slide("s11-osi")}},
-{w:P3,h:"Vidéo 3 · Anatomie de la carte",x:"Lancer la vidéo 3 : première vue d’ensemble de la carte et de ses pièces.",a:function(){play(3)}},
-{w:P3,h:"Composition : le diaporama",x:"Diaporama, diapos 13 à 15 (anatomie, neuf pièces, firmware et pilote). À la fin, on passe au site.",a:function(){slide("s13-anatomie")}},
-{w:P3,h:"Site 3D · la carte complète",x:"Première apparition du site : montrer la carte entière, la faire tourner, puis basculer 2D, Réaliste, 3D avec les boutons du haut. Cliquer sur quelques numéros pour lire les définitions.",a:site(function(S){S.reset()})},
-{w:P3,h:"Site 3D · vue éclatée",x:"Cliquer « Vue éclatée » : les neuf pièces s’écartent, on voit le rôle de chacune. Cliquer « Réinitialiser » ensuite.",a:site(function(S){S.reset();setTimeout(function(){S.explode(true)},200)})},
-{w:P3,h:"Site 3D · Action du port RJ45",x:"Le câble vient se brancher dans le port RJ45. Expliquer les étapes affichées. Puis cliquer « Action SFP+ » pour la fibre.",a:site(function(S){S.reset();S.actStart("rj45")})},
-{w:P3,h:"Site 3D · Action du contrôleur et du dissipateur",x:"Cliquer « Action Contrôleur » (construction de la trame) puis « Action Dissipateur » (refroidissement).",a:site(function(S){S.reset();S.actStart("controleur")})},
-{w:P3,h:"Site 3D · Action du PCIe, de l’alimentation, du firmware",x:"Cliquer « Action PCIe » (DMA vers la RAM), puis « Alimentation », « Firmware », « Pistes » et « LED ».",a:site(function(S){S.reset();S.actStart("pcie")})},
-{w:P3,h:"Vidéo 4 · Voyage d’une trame",x:"Lancer la vidéo 4 : le trajet d’une donnée de l’application au câble.",a:function(){play(4)}},
-{w:P3,h:"Encapsulation, trame, émission, réception",x:"Diaporama, diapos 16 à 21, puis l’exemple « Envoyer un fichier de 4 000 octets ».",a:function(){slide("s16-encapsulation")}},
-{w:P3,h:"Site 3D · les flux F1 à F4",x:"Cliquer F1 (réception cuivre), F2 (fibre), F3 (vers l’ordinateur), F4 (depuis l’ordinateur). Chaque flux se suit en couleur sur la carte.",a:site(function(S){S.reset();S.selectFlow(0)})},
-{w:P4,h:"DMA, accès au support, négociation",x:"Diaporama, diapos 22 à 24, puis l’exemple « Un mauvais câble ralentit tout ».",a:function(){slide("s22-dma")}},
-{w:P4,h:"Site 3D · le PCIe et le DMA",x:"Relancer « Action PCIe » : le contrôleur écrit en RAM sans le processeur.",a:site(function(S){S.reset();S.actStart("pcie")})},
-{w:P4,h:"Vidéo 5 · MAC, IP et ARP",x:"Lancer la vidéo 5.",a:function(){play(5)}},
-{w:P4,h:"Adresse MAC, adresse IP, ARP",x:"Diaporama, diapos 25 à 30, puis l’exemple ARP.",a:function(){slide("s25-mac")}},
-{w:P4,h:"Site 3D · le firmware et l’adresse MAC d’usine",x:"Cliquer « Action Firmware » : l’adresse MAC gravée est chargée dans le contrôleur.",a:site(function(S){S.reset();S.actStart("firmware")})},
-{w:P5,h:"Vidéo 6 · Types de cartes et choix",x:"Lancer la vidéo 6.",a:function(){play(6)}},
-{w:P5,h:"Ethernet, Wi-Fi, fibre, Bluetooth, formes",x:"Diaporama, diapos 31 à 36, puis l’exemple « Quelle carte pour quel besoin ? ».",a:function(){slide("s31-ethernet")}},
-{w:P5,h:"Site 3D · cuivre et fibre",x:"Montrer « Action RJ45 » puis « Action SFP+ » côte à côte : câble cuivre contre fibre optique.",a:site(function(S){S.reset();S.actStart("sfp")})},
-{w:P5,h:"Fiche technique, offload, virtualisation, DPU, bilan",x:"Diaporama, diapos 37 à 41.",a:function(){slide("s37-caract")}},
-{w:P5,h:"Site 3D · refroidissement des cartes rapides",x:"Cliquer « Action Dissipateur » : une carte rapide chauffe, d’où le refroidissement.",a:site(function(S){S.reset();S.actStart("dissipateur")})},
-{w:P6,h:"Vidéo 7 · IA, Big Data et sécurité",x:"Lancer la vidéo 7.",a:function(){play(7)}},
-{w:P6,h:"Développement, IA, Big Data, synthèse, choix, diagnostic",x:"Diaporama, diapos 42 à 50, avec les exemples « IA » et « La LED est éteinte ».",a:function(){slide("s42-dev")}},
-{w:P6,h:"Site 3D · diagnostic avec les LED",x:"Cliquer « Action LED » : lien absent, lien établi, activité, démarche de diagnostic.",a:site(function(S){S.reset();S.actStart("leds")})},
-{w:P6,h:"Site 3D · le quiz",x:"Cliquer « Quiz » : la classe retrouve les pièces sur la carte.",a:site(function(S){S.reset();S.quiz(true)})},
-{w:P1,h:"Conclusion, quiz, glossaire, sources, merci",x:"Diaporama, diapos 51 à 55 : ce qu’il faut retenir, puis questions de la classe.",a:function(){if(window.SITE)window.SITE.reset();slide("s51-conclusion")}},
-{w:P1,h:"Document remis",x:"Ouvrir « Document » : montrer le texte complet, le bouton de téléchargement du Word. Fin de l’exposé.",a:function(){view("doc")}}
+function sl(id){return function(){slide(id)}}
+function vd(n){return function(){play(n)}}
+/* [qui, titre, à dire, secondes, action, facultatif] */
+var RAW=[
+[M,"Ouverture : titre, équipe, plan","Bonjour, groupe 21. Sujet : la carte réseau. Présenter l’équipe et l’ordre de passage (diapos 1 à 3). Avancer avec la flèche →.",20,sl("s01-titre")],
+[M,"Contexte et problématique","Tout passe par le réseau (WhatsApp, API, IA). Une seule pièce le rend possible. Lire la problématique, puis passer la parole à Oumate.",30,sl("s04-contexte")],
+[O,"1 · Définition et noms","Composant matériel qui relie la machine au câble, à la fibre ou à la radio, et lui donne une adresse MAC. Noms : NIC, adaptateur, eth0.",25,sl("s06-definition")],
+[O,"1 · Où, exemples, histoire","Elle est partout : ordinateur, téléphone, box. Ethernet naît en 1973 ; les débits ont été multipliés par 40 000.",15,sl("s08-ou")],
+[O,"Vidéo 1 · C’est quoi une carte réseau ? (facultatif)","À lancer seulement s’il reste du temps : elle résume la définition.",57,vd(1),1],
+[O,"2 · Modèles OSI et TCP/IP","La carte travaille aux couches 1 (physique) et 2 (liaison) : bits, signaux, trames, adresses MAC.",20,sl("s11-osi")],
+[O,"Vidéo 2 · OSI et TCP/IP (facultatif)","Résume les couches, après l’explication.",47,vd(2),1],
+[O,"3 · Composition : les neuf pièces","RJ45, SFP+, contrôleur MAC+PHY, dissipateur, PCIe, flash, alimentation. Puis firmware et pilote.",20,sl("s13-anatomie")],
+[O,"3 · Site 3D : la carte en vrai","Faire tourner la carte, cliquer « Vue éclatée » : les pièces s’écartent. Cliquer deux pastilles pour lire leur rôle.",15,site(function(S){S.reset();setTimeout(function(){S.explode(true)},900)})],
+[O,"Vidéo 3 · Anatomie de la carte (facultatif)","Revoir les pièces en animation, après la démonstration.",53,vd(3),1],
+[O,"4 · Types de cartes","Ethernet (stable), Wi-Fi (mobile), fibre (très haut débit), Bluetooth, intégrée, PCIe, USB. Exemple : quelle carte pour quel besoin.",15,sl("s31-ethernet")],
+[O,"Vidéo 6 · Types de cartes et choix (facultatif)","Résume les types, après l’explication.",59,vd(6),1],
+[O,"5 · Caractéristiques techniques","Débit, latence, duplex, MTU : lire une fiche technique. Passer la parole à Élisée.",10,sl("s37-caract")],
+[E,"6 · Les cinq étapes du fonctionnement","Préparation, traitement, transmission, circulation, réception. Dire chaque étape en une phrase.",25,sl("x1-etapes")],
+[E,"6 · Encapsulation et trame Ethernet","Données, segment, paquet, trame. La trame : MAC destination, MAC source, type, données, CRC.",25,sl("s16-encapsulation")],
+[E,"6 · Émission, réception, exemple de 4 000 octets","Application, noyau, pilote, DMA, carte. Un fichier de 4 000 octets devient trois trames.",20,sl("s19-emission")],
+[E,"6 · Site 3D : les flux F1 à F4","Cliquer F1 (réception cuivre), F2 (fibre), F3 (vers l’ordinateur), F4 (depuis l’ordinateur) : les données se suivent en couleur.",15,site(function(S){S.reset();S.selectFlow(0)})],
+[E,"Vidéo 4 · Voyage d’une trame (facultatif)","Le trajet complet d’une donnée, après l’explication.",52,vd(4),1],
+[E,"6 · DMA, accès au support, négociation","Le DMA écrit en mémoire sans le processeur. Un mauvais câble fait négocier 100 Mbit/s : 80 s au lieu de 8 s pour 1 Go.",20,sl("s22-dma")],
+[E,"7 · Fonctions avancées","Offload (la carte travaille à la place du processeur), virtualisation (une carte, plusieurs machines), SmartNIC et DPU. Passer à Michelle.",15,sl("s38-offload")],
+[M,"8 · Adresse MAC et modes de diffusion","48 bits en hexadécimal, gravée en usine : 00-1A-2B-3C-4D-5E. Unicast, multicast, broadcast.",25,sl("s25-mac")],
+[M,"8 · Adresse IP et comparaison","L’IP dit où est la machine (couche 3), la MAC dit qui elle est (couche 2). IPv4 : 32 bits ; IPv6 : 128 bits.",20,sl("s27-ip")],
+[M,"8 · ARP et ce qui change à chaque saut","« Qui a 192.168.1.1 ? » en broadcast, le routeur répond. Les IP restent, les MAC changent à chaque saut.",25,sl("s29-arp")],
+[M,"8 · Site 3D : la MAC d’usine","Cliquer « Action Firmware » : l’adresse MAC gravée est chargée dans le contrôleur.",10,site(function(S){S.reset();S.actStart("firmware")})],
+[M,"Vidéo 5 · MAC, IP et ARP (facultatif)","Résume l’adressage, après l’explication.",58,vd(5),1],
+[L,"9 · Avantages et inconvénients","Avantages : accès, partage, débit, évolutivité. Inconvénients : sans pilote, rien ne marche ; chaleur ; coût ; sécurité.",60,sl("s41-bilan")],
+[L,"9 · Site 3D : le refroidissement","Cliquer « Action Dissipateur » : une carte rapide chauffe, il faut la refroidir.",20,site(function(S){S.reset();S.actStart("dissipateur")})],
+[L,"9 · Site 3D : l’alimentation","Cliquer « Action Alimentation » : les régulateurs transforment le 12 V du slot PCIe en basse tension pour la puce. Passer à Théodore.",20,site(function(S){S.reset();S.actStart("alim")})],
+[T,"10 · Développeur, IA, Big Data","Latence et débit comptent pour les API. En IA, les GPU attendent le réseau : 8 s à 10 Gbit/s, 0,2 s à 400 Gbit/s.",45,sl("s42-dev")],
+[T,"Vidéo 7 · IA, Big Data et sécurité (facultatif)","Illustre l’importance de la carte, après l’explication.",61,vd(7),1],
+[T,"10 · Synthèse","Petit composant, grand impact : sans elle, pas de réseau ; elle fixe débit et latence.",10,sl("s45-synthese")],
+[T,"11 · Choisir et installer","Ethernet pour la stabilité, Wi-Fi 6+ pour la mobilité, fibre pour un serveur. Installer : brancher, pilote, vérifier la vitesse.",20,sl("s46-choix")],
+[T,"11 · Diagnostiquer : la LED éteinte","Câble, port, ip a, ping. Puis montrer les LED en 3D.",15,sl("s48-diag")],
+[T,"11 · Site 3D : les LED","Cliquer « Action LED » : lien absent, lien établi, activité.",15,site(function(S){S.reset();S.actStart("leds")})],
+[T,"11 · Sécuriser","802.1X, VLAN, chiffrement WPA3 et TLS, mises à jour du pilote et du firmware.",10,sl("s49-securite")],
+[T,"Conclusion et merci","Quatre idées à retenir, puis « Merci, des questions ? ».",15,sl("s51-conclusion")],
+[M,"Questions de la classe (hors chrono)","FAQ (diapo 50), quiz, glossaire, ou retour au site 3D. Le site est remis à la classe.",0,function(){slide("s50-faq")}]
 ];
+var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:!!r[5]}});
+var vidsOn=false,T0=0,tmr=null,paused=false,El=0;
+function fmt(n){n=Math.max(0,Math.round(n));return Math.floor(n/60)+":"+("0"+(n%60)).slice(-2)}
+var CUM=[];(function(){var c=0;ST.forEach(function(s,i){if(!s.opt)c+=s.t;CUM[i]=c})})();
 var pcOn=false,pi=0,pc=$("pc");
-function render(){var s=ST[pi];pc.innerHTML='<div class="pb"><b>'+(pi+1)+'/'+ST.length+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">PARLE : '+s.w.toUpperCase()+' · MANIPULE : PERSONNE 1</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button id="pcP"'+(pi?"":" disabled")+'>◀ Précédent</button><button class="go" id="pcN">'+(pi<ST.length-1?"Suivant ▶":"Terminer ✓")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
-  $("pcP").onclick=function(){go(pi-1)};$("pcN").onclick=function(){pi<ST.length-1?go(pi+1):pcStop()};$("pcX").onclick=pcStop;
+function vn(i){var c=0;for(var k=0;k<=i;k++)if(vis(k))c++;return c}
+function vis(i){return !(ST[i].opt&&!vidsOn)}
+function nextI(i,d){var k=i+d;while(k>=0&&k<ST.length&&!vis(k))k+=d;return(k<0||k>=ST.length)?i:k}
+var PRE={};function prewarm(n){if(PRE[n])return;var v=document.createElement("video");v.preload="auto";v.muted=true;v.src="media/video"+n+".mp4";PRE[n]=v}
+function nextVid(i){for(var k=i;k<ST.length;k++){if(ST[k].opt){var m=/Vidéo (\d)/.exec(ST[k].h);if(m)return +m[1]}}return 0}
+function tick(){if(!paused)El++;var e=$("pcT");if(e){e.textContent="⏱ "+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}}
+function render(){var s=ST[pi],last=pi===ST.length-1,np=nextI(pi,1);
+  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre : cliquer pour pause, double-clic pour remettre à zéro">⏱ '+fmt(El)+' / 10:00</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
+  $("pcP").onclick=function(){go(nextI(pi,-1))};$("pcN").onclick=function(){last?pcStop():go(np)};$("pcX").onclick=pcStop;
+  $("pcV").onclick=function(){vidsOn=!vidsOn;if(!vis(pi)){go(nextI(pi,1))}else render()};
+  $("pcT").onclick=function(){paused=!paused;this.style.opacity=paused?.55:1};$("pcT").ondblclick=function(){El=0;paused=false};
   setH()}
-function go(i){pi=Math.max(0,Math.min(ST.length-1,i));render();var s=ST[pi];if(window.SITE)window.SITE.actStop();s.a()}
+function go(i){pi=Math.max(0,Math.min(ST.length-1,i));render();var s=ST[pi];if(window.SITE)window.SITE.actStop();s.a();if(vidsOn){var n=nextVid(pi);if(n)prewarm(n)}}
 function setH(){requestAnimationFrame(function(){document.documentElement.style.setProperty("--hubh",$("hub").offsetHeight+"px")})}
-function pcStart(){pcOn=true;pc.hidden=false;mark(cur);go(pi)}
+function pcStart(){pcOn=true;pc.hidden=false;mark(cur);if(!tmr)tmr=setInterval(tick,1000);go(vis(pi)?pi:nextI(pi,1))}
 function pcStop(){pcOn=false;pc.hidden=true;mark(cur);setH()}
 window.PARCOURS={start:pcStart,go:go,steps:ST};
-addEventListener("keydown",function(e){if(!pcOn||e.ctrlKey||e.metaKey||e.altKey)return;var t=(e.target.tagName||"");if(t==="INPUT"||t==="SELECT"||t==="TEXTAREA")return;if(e.key==="n"||e.key==="N"||e.key==="PageDown"){e.preventDefault();e.stopImmediatePropagation();if(pi<ST.length-1)go(pi+1)}else if(e.key==="p"||e.key==="P"||e.key==="PageUp"){e.preventDefault();e.stopImmediatePropagation();go(pi-1)}},true);
-addEventListener("message",function(e){var m=e.data||{};if(m.nav==="next"&&pcOn)go(pi+1)});
+addEventListener("keydown",function(e){if(!pcOn||e.ctrlKey||e.metaKey||e.altKey)return;var t=(e.target.tagName||"");if(t==="INPUT"||t==="SELECT"||t==="TEXTAREA")return;if(e.key==="n"||e.key==="N"){e.preventDefault();e.stopImmediatePropagation();go(nextI(pi,1))}else if(e.key==="p"||e.key==="P"){e.preventDefault();e.stopImmediatePropagation();go(nextI(pi,-1))}},true);
+addEventListener("message",function(e){var m=e.data||{};if(!pcOn)return;if(m.nav==="next")go(nextI(pi,1));else if(m.nav==="prev")go(nextI(pi,-1))});
 addEventListener("resize",setH);setH();
 if(innerWidth<900||/Mobi|Android|iPhone/i.test(navigator.userAgent)){var nb=document.createElement("div");nb.style.cssText="position:fixed;left:8px;right:8px;top:8px;z-index:200;background:#fbbf24;color:#06121f;border-radius:12px;padding:10px 14px;font:700 15px 'Times New Roman',serif;display:flex;gap:10px;align-items:center";nb.innerHTML="<span style='flex:1'>Ce site est conçu pour un ordinateur. Ouvrez-le sur un ordinateur pour un affichage correct.</span><button style='border:0;background:#06121f;color:#fff;border-radius:8px;padding:6px 12px;font:700 14px serif'>OK</button>";nb.querySelector("button").onclick=function(){nb.remove()};document.body.appendChild(nb)}
 })();

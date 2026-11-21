@@ -40,5 +40,10 @@
 body.acting #hint{display:none}
 @media (max-width:860px){#pc{flex-wrap:wrap}#pc .pk{width:100%}#pc .pk button{flex:1}#hubbar button{padding:9px 10px;font-size:14px}#acts{bottom:calc(var(--hubh) + 66px)}#actcap{bottom:calc(var(--hubh) + 120px)}}
 body.acting #legend{display:none}
-#actcap{left:24px;top:190px;bottom:auto;transform:none;width:min(430px,94vw)}
+#actcap{left:24px;top:190px;bottom:auto;transform:none;width:min(440px,94vw)}
 @media (max-width:860px){#actcap{left:8px;right:8px;top:auto;bottom:calc(var(--hubh) + 120px);width:auto}}
+#actcap .ac-list{max-height:calc(100vh - var(--hubh) - 420px);min-height:80px;overflow:auto;margin:8px 0 4px;display:flex;flex-direction:column;gap:7px}
+#actcap .st{padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.04);opacity:.72;border-left:4px solid var(--line)}
+#actcap .st.cur{opacity:1;background:rgba(251,191,36,.12);border-left-color:var(--am);animation:stIn .35s ease}
+#actcap .st b{display:block;font-size:17px;color:var(--ink)}#actcap .st span{display:block;font-size:15px;line-height:1.4;color:#d5e0f3;margin-top:2px}
+@keyframes stIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}

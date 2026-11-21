@@ -325,7 +325,7 @@ const pcbTex = makeTex(2048, 1024, (x, W, H) => {
   x.strokeRect(X(-0.75), Z(-1.05), X(1.55) - X(-0.75), Z(1.05) - Z(-1.05));
   x.strokeRect(X(2.2), Z(-1.65), X(3.0) - X(2.2), Z(-0.95) - Z(-1.65));
   x.fillStyle = '#fff'; x.font = 'bold 40px "Times New Roman", serif';
-  x.fillText('ESGIS · GROUPE 17', X(-1.9), Z(1.85));
+  x.fillText('ESGIS · GROUPE 21', X(-1.9), Z(1.85));
   x.font = '30px "Times New Roman", serif';
   x.fillText('NIC 10G · PCIe x4 · REV 1.0', X(0.7), Z(1.62));
   x.fillText('U1', X(-0.7), Z(-1.1)); x.fillText('FLASH', X(2.2), Z(-1.7)); x.fillText('J1', X(-3.9), Z(-0.4));
@@ -441,7 +441,14 @@ PARTS.forEach((p, i) => {
   pin.className = 'pin';
   pin.innerHTML = '<span class="nn">' + p.n + '</span><span class="pl">' + p.name + '</span>';
   pin.title = p.name;
-  pin.addEventListener('click', () => select(p.id));
+  // un glissement qui démarre sur une pastille fait tourner la carte ; un simple clic sélectionne la pièce
+  pin.addEventListener('pointerdown', (e) => {
+    const x0 = e.clientX, y0 = e.clientY;
+    renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { pointerId: e.pointerId, clientX: x0, clientY: y0, button: e.button, buttons: e.buttons, pointerType: e.pointerType, isPrimary: e.isPrimary, bubbles: true }));
+    const up = (ev) => { removeEventListener('pointerup', up, true); if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) select(p.id); };
+    addEventListener('pointerup', up, true);
+  });
+  pin.addEventListener('keydown', (e) => { if (e.key === 'Enter') select(p.id); });
   pinsEl.appendChild(pin);
   pinEls[p.id] = pin;
 });
@@ -776,12 +783,17 @@ function frame(ms) {
   requestAnimationFrame(frame);
   const t = ms / 1000;
 
+  const arWanted = controls.autoRotate;
   if (goal) {
-    camera.position.lerp(goal.pos, 0.06);
-    controls.target.lerp(goal.look, 0.06);
-    if (camera.position.distanceTo(goal.pos) < 0.03) goal = null;
+    if (!goal.t0) goal.t0 = ms;
+    const k = act ? 0.12 : 0.07;
+    camera.position.lerp(goal.pos, k);
+    controls.target.lerp(goal.look, k);
+    if (camera.position.distanceTo(goal.pos) < 0.05 || ms - goal.t0 > 2200) goal = null;
+    controls.autoRotate = false;
   }
   controls.update();
+  controls.autoRotate = arWanted;
 
   explode += (explodeGoal - explode) * 0.07;
   const e = explode * explode * (3 - 2 * explode);
@@ -1170,6 +1182,7 @@ ACT.leds = {
 };
 
 /* ---- Exécution ---- */
+const ACT_SPEED = 1.9;
 let act = null;
 const actCap = $('actcap');
 function actStop() {
@@ -1201,16 +1214,17 @@ function actStart(id) {
 }
 function actTick(t) {
   if (!act) return;
-  const tt = Math.max(0, t - act.t0);
+  const tt = Math.max(0, t - act.t0) * ACT_SPEED;
   act.upd(tt, act.S);
   if (act.S.ledHold) { setLive(ledA, act.S.ledA); setLive(ledB, act.S.ledB); }
   let k = 0; act.D.steps.forEach((s, i) => { if (tt >= s[0]) k = i; });
   if (k !== act.step) {
-    act.step = k; const s = act.D.steps[k];
+    act.step = k;
     actCap.querySelector('.ac-h').textContent = '⚡ ACTION · ' + act.D.title.toUpperCase();
     actCap.querySelector('.ac-n').textContent = 'Étape ' + (k + 1) + ' / ' + act.D.steps.length;
-    actCap.querySelector('.ac-t').textContent = s[1];
-    actCap.querySelector('.ac-p').textContent = s[2];
+    const list = actCap.querySelector('.ac-list');
+    list.innerHTML = act.D.steps.slice(0, k + 1).map((s, i) => '<div class="st' + (i === k ? ' cur' : '') + '"><b>' + (i + 1) + ' · ' + s[1] + '</b><span>' + s[2] + '</span></div>').join('');
+    list.scrollTop = list.scrollHeight;
   }
 }
 function actReplay() { if (act) { const id = act.id; actStart(id); } }
@@ -1231,7 +1245,8 @@ window.SITE = {
   actSeek: (s) => { if (act) act.t0 = performance.now() / 1000 - s; },
   explode: (on) => { if (!!explodeGoal !== !!on) $('bExplode').click(); },
   quiz: (on) => { if (!!quiz !== !!on) $('bQuiz').click(); },
-  reset() { actStop(); if (quiz) $('bQuiz').click(); stopTour(); explodeGoal = 0; $('bExplode').classList.remove('on'); setFlow(-1); deselect(); setMode('3d'); goHome(); controls.autoRotate = true; },
+  reset() { actStop(); if (quiz) $('bQuiz').click(); stopTour(); explodeGoal = 0; $('bExplode').classList.remove('on'); setFlow(-1); deselect(); setMode('3d'); goHome(); controls.autoRotate = true; controls.enabled = true; },
+  cam: () => ({ p: camera.position.toArray(), t: controls.target.toArray(), goal: !!goal, en: controls.enabled, ar: controls.autoRotate, quiz: !!quiz }),
   get mode() { return mode; }
 };
 
