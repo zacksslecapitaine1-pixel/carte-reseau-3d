@@ -47,3 +47,9 @@ body.acting #legend{display:none}
 #actcap .st.cur{opacity:1;background:rgba(251,191,36,.12);border-left-color:var(--am);animation:stIn .35s ease}
 #actcap .st b{display:block;font-size:17px;color:var(--ink)}#actcap .st span{display:block;font-size:15px;line-height:1.4;color:#d5e0f3;margin-top:2px}
 @keyframes stIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+#welcome .off{margin-top:10px;background:transparent;border:1px solid var(--line);color:var(--ink);padding:9px 14px;border-radius:12px;cursor:pointer;font:inherit}
+#welcome .offst{margin-top:8px;font-size:14px;color:var(--mut,#9fb0cc)}
+#pcT.paused{background:rgba(251,191,36,.2);border-color:var(--am)}
+
+.vp{position:relative}.vmute{position:absolute;right:16px;top:52px;z-index:5;background:var(--am,#fbbf24);color:#0b1220;border:0;border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer}

@@ -20,7 +20,7 @@ function grid(){var o=ovs.videos;o.innerHTML='<div class="ovh"><h2>Vidéos expli
 function play(n){view("videos");var o=ovs.videos,v=VID[n-1];
   o.innerHTML='<div class="vp"><div class="vt">Vidéo '+n+' · '+v[0]+'</div><video controls autoplay playsinline preload="auto" poster="media/poster'+n+'.jpg" src="media/video'+n+'.mp4"></video><div class="vb"><button id="vL">← Liste des vidéos</button><button id="vP"'+(n<2?" disabled":"")+'>◀ Précédente</button><button id="vN"'+(n>6?" disabled":"")+'>Suivante ▶</button></div></div>';
   $("vL").onclick=grid;$("vP").onclick=function(){play(n-1)};$("vN").onclick=function(){play(n+1)};
-  var vd=o.querySelector("video");vd.onended=function(){};vd.addEventListener("canplaythrough",function(){if(n<7)prewarm(n+1)},{once:true});var p=vd.play();if(p&&p.catch)p.catch(function(){})}
+  var vd=o.querySelector("video");vd.onended=function(){if(pcOn&&ST[pi]&&ST[pi].opt&&ST[pi].a&&String(ST[pi].h).indexOf("Vidéo "+n)>-1)setTimeout(function(){if(pcOn&&ST[pi].opt)go(nextI(pi,1))},1200)};vd.addEventListener("canplaythrough",function(){if(n<7)prewarm(n+1)},{once:true});var p=vd.play();if(p&&p.catch)p.catch(function(){vd.muted=true;var q=vd.play();if(q&&q.catch)q.catch(function(){});var m=document.createElement("button");m.className="vmute";m.textContent="🔊 Activer le son";m.onclick=function(){vd.muted=false;vd.play();m.remove()};o.querySelector(".vp").appendChild(m)})}
 grid();
 /* Barre du bas */
 [].forEach.call(document.querySelectorAll("#hubbar button[data-v]"),function(b){b.onclick=function(){var k=b.dataset.v;
@@ -73,7 +73,7 @@ var RAW=[
 [M,"Questions de la classe (hors chrono)","FAQ (diapo 50), quiz, glossaire, ou retour au site 3D. Le site est remis à la classe.",0,function(){slide("s50-faq")}]
 ];
 var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:!!r[5]}});
-var vidsOn=false,T0=0,tmr=null,paused=false,El=0;
+var vidsOn=true,T0=0,tmr=null,paused=false,El=0;
 function fmt(n){n=Math.max(0,Math.round(n));return Math.floor(n/60)+":"+("0"+(n%60)).slice(-2)}
 var CUM=[];(function(){var c=0;ST.forEach(function(s,i){if(!s.opt)c+=s.t;CUM[i]=c})})();
 var pcOn=false,pi=0,pc=$("pc");
@@ -82,7 +82,7 @@ function vis(i){return !(ST[i].opt&&!vidsOn)}
 function nextI(i,d){var k=i+d;while(k>=0&&k<ST.length&&!vis(k))k+=d;return(k<0||k>=ST.length)?i:k}
 var PRE={};function prewarm(n){if(PRE[n])return;var v=document.createElement("video");v.preload="auto";v.muted=true;v.src="media/video"+n+".mp4";PRE[n]=v}
 function nextVid(i){for(var k=i;k<ST.length;k++){if(ST[k].opt){var m=/Vidéo (\d)/.exec(ST[k].h);if(m)return +m[1]}}return 0}
-function tick(){if(!paused)El++;var e=$("pcT");if(e){e.textContent="⏱ "+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}}
+function tick(){var vp=pcOn&&ST[pi]&&ST[pi].opt;if(!paused&&!vp)El++;var e=$("pcT");if(e){e.classList.toggle("paused",!!vp);e.textContent=(vp?"⏸ vidéo · ":"⏱ ")+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}}
 function render(){var s=ST[pi],last=pi===ST.length-1,np=nextI(pi,1);
   pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre : cliquer pour pause, double-clic pour remettre à zéro">⏱ '+fmt(El)+' / 10:00</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
   $("pcP").onclick=function(){go(nextI(pi,-1))};$("pcN").onclick=function(){last?pcStop():go(np)};$("pcX").onclick=pcStop;
@@ -99,3 +99,13 @@ addEventListener("message",function(e){var m=e.data||{};if(!pcOn)return;if(m.nav
 addEventListener("resize",setH);setH();
 if(innerWidth<900||/Mobi|Android|iPhone/i.test(navigator.userAgent)){var nb=document.createElement("div");nb.style.cssText="position:fixed;left:8px;right:8px;top:8px;z-index:200;background:#fbbf24;color:#06121f;border-radius:12px;padding:10px 14px;font:700 15px 'Times New Roman',serif;display:flex;gap:10px;align-items:center";nb.innerHTML="<span style='flex:1'>Ce site est conçu pour un ordinateur. Ouvrez-le sur un ordinateur pour un affichage correct.</span><button style='border:0;background:#06121f;color:#fff;border-radius:8px;padding:6px 12px;font:700 14px serif'>OK</button>";nb.querySelector("button").onclick=function(){nb.remove()};document.body.appendChild(nb)}
 })();
+
+/* Mode hors ligne */
+(function(){var b=document.getElementById("offBtn"),st=document.getElementById("offSt");if(!("serviceWorker"in navigator)||!/^https?:$/.test(location.protocol)){return}
+navigator.serviceWorker.register("sw.js").then(function(){b.hidden=false}).catch(function(){});
+navigator.serviceWorker.addEventListener("message",function(e){var m=e.data||{};if(!m.off)return;st.hidden=false;
+ if(m.off==="prog")st.textContent="Téléchargement hors ligne : "+m.n+" / "+m.total+" fichiers…";
+ else if(m.off==="ok"){st.textContent="✓ Mode hors ligne prêt : le site fonctionne sans Internet sur cet ordinateur.";b.hidden=true;try{localStorage.setItem("nic_off","1")}catch(x){}}
+ else st.textContent="Interrompu (connexion perdue). Relancez le bouton.";});
+b.onclick=function(){st.hidden=false;st.textContent="Téléchargement en cours (environ 40 Mo)…";navigator.serviceWorker.ready.then(function(r){(r.active||navigator.serviceWorker.controller).postMessage("precache")})};
+try{if(localStorage.getItem("nic_off")){st.hidden=false;st.textContent="✓ Mode hors ligne déjà préparé sur cet ordinateur."}}catch(x){}})();

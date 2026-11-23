@@ -1,0 +1,9 @@
+SITE « LA CARTE RÉSEAU (NIC) » — GROUPE 21 — VERSION SANS INTERNET
+
+1. Décompressez le dossier ZIP (clic droit > Extraire tout). Ne lancez pas le site depuis l'intérieur du ZIP.
+2. Ouvrez le dossier et double-cliquez sur « index.html » (de préférence avec Google Chrome ou Edge).
+3. Cliquez sur « Commencer l'exploration », puis sur « Parcours » en bas.
+
+Aucune connexion n'est nécessaire : la 3D, le diaporama, les vidéos et le document sont dans le dossier.
+Gardez le dossier complet (ne déplacez pas index.html seul).
+Si une vidéo n'a pas de son : cliquez sur « Activer le son » ou sur la vidéo.

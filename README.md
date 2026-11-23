@@ -30,3 +30,9 @@ Dépôt → Settings → Pages → Branch `main` / dossier `/ (root)`.
   - *Parcours* : 31 étapes « Suivant » qui changent d'écran (vidéo, diaporama, carte 3D) avec, pour chaque étape, Personne n qui parle et ce qu'il faut montrer (touches N / P).
 - **Boutons « Action »** (carte 3D) : RJ45, SFP+, Contrôleur, Dissipateur, PCIe, Firmware, Alimentation, Pistes, LED. Chaque action montre le composant en fonctionnement (câble qui se branche, signal, chaleur, DMA…).
 - Les numéros sur la carte sont plus petits ; la carte 3D complète reste l'interface de base.
+
+## Mode hors ligne
+
+- **Sur le site en ligne** : ouvrir la page une fois avec Internet, puis cliquer sur « Préparer le mode hors ligne » (écran d’accueil). Le site fonctionne ensuite sans connexion sur cet ordinateur.
+- **Dossier autonome** : « Code > Download ZIP » (ou le ZIP fourni), décompresser, double-cliquer sur `index.html`.
+- Après une modification de `main.js` : `npx esbuild main.js --bundle --format=iife --minify --alias:three=./vendor/three.module.js --alias:three/addons=./vendor/addons --outfile=main.bundle.js`.
