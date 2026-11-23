@@ -73,8 +73,8 @@ var RAW=[
 [M,"Questions de la classe (hors chrono)","FAQ (diapo 50), quiz, glossaire, ou retour au site 3D. Le site est remis à la classe.",0,function(){slide("s50-faq")}]
 ];
 var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:!!r[5]}});
-var vidsOn=true,T0=0,tmr=null,paused=false,El=0;
-function fmt(n){n=Math.max(0,Math.round(n));return Math.floor(n/60)+":"+("0"+(n%60)).slice(-2)}
+var vidsOn=true,T0=0,tmr=null,paused=false,El=0,SLOW=1.5; /* 15 min réelles = 10:00 affichées */
+function fmt(n){n=Math.max(0,Math.floor(n));return Math.floor(n/60)+":"+("0"+(n%60)).slice(-2)}
 var CUM=[];(function(){var c=0;ST.forEach(function(s,i){if(!s.opt)c+=s.t;CUM[i]=c})})();
 var pcOn=false,pi=0,pc=$("pc");
 function vn(i){var c=0;for(var k=0;k<=i;k++)if(vis(k))c++;return c}
@@ -82,12 +82,13 @@ function vis(i){return !(ST[i].opt&&!vidsOn)}
 function nextI(i,d){var k=i+d;while(k>=0&&k<ST.length&&!vis(k))k+=d;return(k<0||k>=ST.length)?i:k}
 var PRE={};function prewarm(n){if(PRE[n])return;var v=document.createElement("video");v.preload="auto";v.muted=true;v.src="media/video"+n+".mp4";PRE[n]=v}
 function nextVid(i){for(var k=i;k<ST.length;k++){if(ST[k].opt){var m=/Vidéo (\d)/.exec(ST[k].h);if(m)return +m[1]}}return 0}
-function tick(){var vp=pcOn&&ST[pi]&&ST[pi].opt;if(!paused&&!vp)El++;var e=$("pcT");if(e){e.classList.toggle("paused",!!vp);e.textContent=(vp?"⏸ vidéo · ":"⏱ ")+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}}
+function clk(){var vp=pcOn&&ST[pi]&&ST[pi].opt,e=$("pcT"),b=$("pcPz");if(e){e.classList.toggle("paused",!!vp||paused);e.textContent=(paused?"⏸ pause · ":vp?"⏸ vidéo · ":"⏱ ")+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}if(b){b.textContent=paused?"▶ Reprendre":"⏸ Pause";b.classList.toggle("on",paused)}}
+function tick(){var vp=pcOn&&ST[pi]&&ST[pi].opt;if(!paused&&!vp)El+=1/SLOW;clk()}
 function render(){var s=ST[pi],last=pi===ST.length-1,np=nextI(pi,1);
-  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre : cliquer pour pause, double-clic pour remettre à zéro">⏱ '+fmt(El)+' / 10:00</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
+  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre (double-clic : remise à zéro)">⏱ '+fmt(El)+' / 10:00</button><button id="pcPz" class="pz" title="Mettre le chronomètre en pause (interruption)">⏸ Pause</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
   $("pcP").onclick=function(){go(nextI(pi,-1))};$("pcN").onclick=function(){last?pcStop():go(np)};$("pcX").onclick=pcStop;
   $("pcV").onclick=function(){vidsOn=!vidsOn;if(!vis(pi)){go(nextI(pi,1))}else render()};
-  $("pcT").onclick=function(){paused=!paused;this.style.opacity=paused?.55:1};$("pcT").ondblclick=function(){El=0;paused=false};
+  $("pcPz").onclick=function(){paused=!paused;clk()};$("pcT").ondblclick=function(){El=0;paused=false;clk()};clk();
   setH()}
 function go(i){pi=Math.max(0,Math.min(ST.length-1,i));render();var s=ST[pi];if(window.SITE)window.SITE.actStop();s.a();if(vidsOn){var n=nextVid(pi);if(n)prewarm(n)}}
 function setH(){requestAnimationFrame(function(){document.documentElement.style.setProperty("--hubh",$("hub").offsetHeight+"px")})}

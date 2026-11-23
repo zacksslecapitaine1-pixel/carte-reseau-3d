@@ -53,3 +53,5 @@ body.acting #legend{display:none}
 #pcT.paused{background:rgba(251,191,36,.2);border-color:var(--am)}
 
 .vp{position:relative}.vmute{position:absolute;right:16px;top:52px;z-index:5;background:var(--am,#fbbf24);color:#0b1220;border:0;border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer}
+
+#pcPz.pz{font-weight:700}#pcPz.on{background:var(--am,#fbbf24);color:#0b1220}
