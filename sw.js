@@ -1,5 +1,5 @@
 /* Mode hors ligne : met en cache le site après la première visite */
-const V = 'nic-g21-v6';
+const V = 'nic-g21-v7';
 const CORE = ['./', 'index.html', 'hub.js', 'hub.css', 'main.bundle.js', 'logo-esgis.png', 'slides/index.html'];
 const BIG = ['media/video1.mp4','media/video2.mp4','media/video3.mp4','media/video4.mp4','media/video5.mp4','media/video6.mp4','media/video7.mp4',
   'media/poster1.jpg','media/poster2.jpg','media/poster3.jpg','media/poster4.jpg','media/poster5.jpg','media/poster6.jpg','media/poster7.jpg',

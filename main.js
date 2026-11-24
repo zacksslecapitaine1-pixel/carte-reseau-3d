@@ -133,6 +133,22 @@ key.shadow.camera.near = 1; key.shadow.camera.far = 24;
 key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
 const ambient = new THREE.AmbientLight(0xffffff, 0);
 scene.add(ambient);
+/* Éclairage uniforme (sans reflets) : lumière douce de tous les côtés, la pièce se lit nettement sous n’importe quel angle */
+const hemi = new THREE.HemisphereLight(0xffffff, 0xb4bccd, 0);
+scene.add(hemi);
+const fills = [[-6, 5, -5], [6, 4, -6], [-5, 3, 6], [0, -6, 0]].map((p) => { const l = new THREE.DirectionalLight(0xffffff, 0); l.position.set(...p); scene.add(l); return l; });
+function matteAll() {
+  scene.traverse((o) => {
+    if (!o.material || o.userData.edge) return;
+    [].concat(o.material).forEach((m) => {
+      if (!m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial) return;
+      if (m.userData.matte) return;
+      m.userData.matte = 1; m.metalness = Math.min(m.metalness, 0.0); m.roughness = 1; m.envMapIntensity = 0;
+      if (m.isMeshPhysicalMaterial) { m.clearcoat = 0; m.specularIntensity = 0; m.reflectivity = 0; }
+      m.needsUpdate = true;
+    });
+  });
+}
 
 const grid = new THREE.GridHelper(40, 80, 0x1d4ed8, 0x14233f);
 grid.position.y = -1.3;
@@ -141,7 +157,7 @@ grid.material.opacity = 0.55;
 scene.add(grid);
 
 /* Sol du mode Réaliste (reçoit les ombres) */
-const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64), new THREE.MeshStandardMaterial({ color: 0x15181e, roughness: 0.6, metalness: 0.1 }));
+const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64), new THREE.MeshStandardMaterial({ color: 0x1a1e26, roughness: 1, metalness: 0 }));
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = -1.3;
 floor.receiveShadow = true;
@@ -696,9 +712,9 @@ function highlight(id, boost) {
 const MODE_ORDER = ['2d', '3d', 'real'];
 const envTex = scene.environment;
 const MODES = {
-  '3d': { bg: 0x0b1220, fog: [0x0b1220, 16, 36], envI: 1, exp: 1.15, tone: THREE.ACESFilmicToneMapping, key: [1.5, 0xffffff, [3, 7, 5]], cyan: 140, violet: 110, amb: 0, grid: true, gridOp: 0.55, floor: false, shadow: false },
-  real: { bg: 0x101319, fog: [0x101319, 18, 42], envI: 0.9, exp: 0.95, tone: THREE.ACESFilmicToneMapping, key: [2.4, 0xfff1dc, [4, 8, 5]], cyan: 22, violet: 16, amb: 0.05, grid: false, gridOp: 0, floor: true, shadow: true },
-  '2d': { bg: 0x0a2a4a, fog: null, envI: 0, exp: 1, tone: THREE.NoToneMapping, key: [0.45, 0xffffff, [0, 10, 0.01]], cyan: 0, violet: 0, amb: 0.85, grid: true, gridOp: 0.45, floor: false, shadow: false }
+  '3d': { bg: 0x0b1220, fog: [0x0b1220, 16, 36], envI: 0, exp: 1.0, tone: THREE.NoToneMapping, key: [1.0, 0xffffff, [3, 7, 5]], cyan: 0, violet: 0, amb: 0.55, hemi: 1.1, fill: 0.55, grid: true, gridOp: 0.55, floor: false, shadow: false },
+  real: { bg: 0x101319, fog: [0x101319, 18, 42], envI: 0, exp: 1.0, tone: THREE.NoToneMapping, key: [1.0, 0xffffff, [4, 8, 5]], cyan: 0, violet: 0, amb: 0.55, hemi: 1.1, fill: 0.55, grid: false, gridOp: 0, floor: true, shadow: false },
+  '2d': { bg: 0x0a2a4a, fog: null, envI: 0, exp: 1, tone: THREE.NoToneMapping, key: [0.45, 0xffffff, [0, 10, 0.01]], cyan: 0, violet: 0, amb: 0.85, hemi: 0, fill: 0, grid: true, gridOp: 0.45, floor: false, shadow: false }
 };
 let mode = '3d';
 function refreshMats() {
@@ -727,7 +743,8 @@ function setMode(md) {
   renderer.toneMappingExposure = c.exp;
   key.intensity = c.key[0]; key.color.setHex(c.key[1]); key.position.set(...c.key[2]);
   key.castShadow = c.shadow;
-  cyan.intensity = c.cyan; violet.intensity = c.violet; ambient.intensity = c.amb;
+  cyan.intensity = c.cyan; violet.intensity = c.violet; ambient.intensity = c.amb; hemi.intensity = c.hemi; fills.forEach((l) => { l.intensity = c.fill; });
+  matteAll();
   grid.visible = c.grid; grid.material.opacity = c.gridOp;
   floor.visible = c.floor;
   refreshMats();

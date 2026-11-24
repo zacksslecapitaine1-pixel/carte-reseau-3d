@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const COMMON = 'Même rôle que la carte réseau d’un ordinateur : mettre les données en trames, leur donner une adresse MAC et les envoyer sur le réseau (couches 1 et 2). Seule la forme change.';
 const AMB = 0xfbbf24, CY = 0x38bdf8;
-const mat = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.5, metalness: 0.25 }, o));
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 1, metalness: 0 }, o));
 const put = (p, geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); p.add(o); return o; };
 const box = (p, w, h, d, x, y, z, c, o) => put(p, new THREE.BoxGeometry(w, h, d), mat(c, o), x, y, z);
 const cyl = (p, r, h, x, y, z, c, o) => put(p, new THREE.CylinderGeometry(r, r, h, 32), mat(c, o), x, y, z);
@@ -21,7 +21,7 @@ function maker(g) {
   const shells = [], parts = [];
   const H = {
     shell(geo, x, y, z, c = 0x9fb0cc, rot) {
-      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: 0.4, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c, roughness: 1, metalness: 0, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
       m.position.set(x, y, z); if (rot) m.rotation.set(...rot); g.add(m);
       const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: CY, transparent: true, opacity: 0.55 }));
       e.position.copy(m.position); e.rotation.copy(m.rotation); g.add(e); shells.push({ m, e }); return m;
@@ -320,6 +320,7 @@ window.DEVICES_DATA = DEVICES.map(d => ({ id: d.id, name: d.name, where: d.where
 
 
 /* Détails : petits composants (condensateurs, puces, pistes) semés sur les cartes électroniques */
+const evenLight = (sc) => { sc.add(new THREE.AmbientLight(0xffffff, 0.7)); sc.add(new THREE.HemisphereLight(0xffffff, 0xb4bccd, 1.1)); [[4, 7, 5], [-5, 5, -4], [5, 3, -6], [-5, 3, 6], [0, -6, 0]].forEach(p => { const l = new THREE.DirectionalLight(0xffffff, 0.55); l.position.set(...p); sc.add(l); }); };
 function decorate(g, seed) {
   let a = 0; for (const ch of seed) a = (a * 31 + ch.charCodeAt(0)) >>> 0;
   const rnd = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
@@ -370,8 +371,7 @@ function makeThumbs() {
   const W = 360, Hh = 270, N = 12, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
   const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true }); r.setSize(W, Hh, false);
   const sc = new THREE.Scene(); sc.background = new THREE.Color(0x0b1220);
-  sc.add(new THREE.HemisphereLight(0xcfe3ff, 0x1a2540, 1.1)); const k = new THREE.DirectionalLight(0xffffff, 1.6); k.position.set(4, 7, 5); sc.add(k);
-  const f = new THREE.DirectionalLight(0x6ea8ff, 0.7); f.position.set(-5, 2, -4); sc.add(f);
+  evenLight(sc);
   const cam = new THREE.PerspectiveCamera(40, W / Hh, 0.1, 100), out = {};
   DEVICES.forEach(d => {
     const g = new THREE.Group(), m = maker(g); m.H.g = g; d.build(m.H); decorate(g, d.id);
@@ -403,9 +403,7 @@ function ui() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1220);
   camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-  scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x1a2540, 1.1));
-  const k = new THREE.DirectionalLight(0xffffff, 1.6); k.position.set(4, 7, 5); scene.add(k);
-  const f = new THREE.DirectionalLight(0x6ea8ff, 0.7); f.position.set(-5, 2, -4); scene.add(f);
+  evenLight(scene);
   const floor = new THREE.GridHelper(14, 28, 0x2a3c66, 0x1b2a4a); floor.position.y = -2.4; scene.add(floor);
   controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.dampingFactor = 0.08; controls.autoRotate = true; controls.autoRotateSpeed = 1.1; controls.minDistance = 3; controls.maxDistance = 16;
   ray = new THREE.Raycaster();
