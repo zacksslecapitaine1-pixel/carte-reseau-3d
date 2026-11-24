@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import './devices.js';
 
 /* ---------- Contenu pédagogique ---------- */
 const PARTS = [
@@ -781,6 +782,7 @@ const tmp = new THREE.Vector3();
 let frameN = 0;
 function frame(ms) {
   requestAnimationFrame(frame);
+  if (window.__devOpen) return; // l’option « Autres appareils » a sa propre scène
   const t = ms / 1000;
 
   const arWanted = controls.autoRotate;

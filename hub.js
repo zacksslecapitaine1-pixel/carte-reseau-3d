@@ -1,11 +1,12 @@
 (function(){
 var $=function(i){return document.getElementById(i)};
 var VID=[["Qu’est-ce qu’une carte réseau ?","0:57"],["OSI et TCP/IP","0:47"],["Anatomie de la carte","0:53"],["Voyage d’une trame","0:52"],["MAC, IP et ARP","0:58"],["Types de cartes et choix","0:59"],["IA, Big Data et sécurité","1:01"]];
-var views=["site","videos","slides","doc"],cur="site",ovs={videos:$("ov-videos"),slides:$("ov-slides"),doc:$("ov-doc")};
+var views=["site","videos","slides","doc"],cur="site",ovs={videos:$("ov-videos"),devices:$("ov-devices"),slides:$("ov-slides"),doc:$("ov-doc")};
 function mark(v){[].forEach.call(document.querySelectorAll("#hubbar button[data-v]"),function(b){var k=b.dataset.v;b.classList.toggle("on",k===v||(k==="pc"&&pcOn&&false))});$("hpc").classList.toggle("on",pcOn)}
 function view(v){
   Object.keys(ovs).forEach(function(k){ovs[k].hidden=k!==v});
   if(cur==="videos"&&v!=="videos"){var vv=document.querySelector("#ov-videos video");if(vv)vv.pause()}
+  if(v==="devices"){if(window.DEVICES)DEVICES.open()}else if(window.DEVICES)DEVICES.close();
   cur=v;mark(v);
   if(v==="doc"&&!$("fr-doc").src){$("fr-doc").src="doc/Expose-Carte-Reseau-Groupe21.pdf#view=FitH"}
   if(v==="slides"){ensureSlides()}
@@ -70,12 +71,14 @@ var RAW=[
 [T,"11 · Site 3D : les LED","Cliquer « Action LED » : lien absent, lien établi, activité.",15,site(function(S){S.reset();S.actStart("leds")})],
 [T,"11 · Sécuriser","802.1X, VLAN, chiffrement WPA3 et TLS, mises à jour du pilote et du firmware.",10,sl("s49-securite")],
 [T,"Conclusion et merci","Quatre idées à retenir, puis « Merci, des questions ? ».",15,sl("s51-conclusion")],
-[M,"Questions de la classe (hors chrono)","FAQ (diapo 50), quiz, glossaire, ou retour au site 3D. Le site est remis à la classe.",0,function(){slide("s50-faq")}]
+[O,"BONUS · La carte réseau dans les autres appareils (diapos)","Facultatif, hors des 10 minutes : mettre le chrono en pause (bouton ⏸). Montrer que téléphone, montre, voiture, imprimante… ont la même fonction sous d’autres formes.",0,sl("x8-annexe-mobiles"),2],
+[O,"BONUS · Les 11 appareils en 3D","Facultatif, hors chrono : cliquer un appareil à gauche, laisser les rayons X, cliquer les pièces ambrées, puis « Action » et « Comparer ». Appuyer sur Suivant pour revenir aux questions.",0,function(){view("devices");if(window.DEVICES)DEVICES.open("phone")},2],
+[M,"Questions de la classe (hors chrono)","FAQ (diapo 57), quiz, glossaire, ou retour au site 3D. Le site est remis à la classe.",0,function(){slide("s50-faq")}]
 ];
-var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:!!r[5]}});
+var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:r[5]===1,bonus:r[5]===2}});
 var vidsOn=true,T0=0,tmr=null,paused=false,El=0,SLOW=1.5; /* 15 min réelles = 10:00 affichées */
 function fmt(n){n=Math.max(0,Math.floor(n));return Math.floor(n/60)+":"+("0"+(n%60)).slice(-2)}
-var CUM=[];(function(){var c=0;ST.forEach(function(s,i){if(!s.opt)c+=s.t;CUM[i]=c})})();
+var CUM=[];(function(){var c=0;ST.forEach(function(s,i){if(!s.opt&&!s.bonus)c+=s.t;CUM[i]=c})})();
 var pcOn=false,pi=0,pc=$("pc");
 function vn(i){var c=0;for(var k=0;k<=i;k++)if(vis(k))c++;return c}
 function vis(i){return !(ST[i].opt&&!vidsOn)}
@@ -85,7 +88,7 @@ function nextVid(i){for(var k=i;k<ST.length;k++){if(ST[k].opt){var m=/Vidéo (\d
 function clk(){var vp=pcOn&&ST[pi]&&ST[pi].opt,e=$("pcT"),b=$("pcPz");if(e){e.classList.toggle("paused",!!vp||paused);e.textContent=(paused?"⏸ pause · ":vp?"⏸ vidéo · ":"⏱ ")+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}if(b){b.textContent=paused?"▶ Reprendre":"⏸ Pause";b.classList.toggle("on",paused)}}
 function tick(){var vp=pcOn&&ST[pi]&&ST[pi].opt;if(!paused&&!vp)El+=1/SLOW;clk()}
 function render(){var s=ST[pi],last=pi===ST.length-1,np=nextI(pi,1);
-  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre (double-clic : remise à zéro)">⏱ '+fmt(El)+' / 10:00</button><button id="pcPz" class="pz" title="Mettre le chronomètre en pause (interruption)">⏸ Pause</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
+  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':s.bonus?'BONUS FACULTATIF · HORS DES 10 MINUTES · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt||s.bonus?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre (double-clic : remise à zéro)">⏱ '+fmt(El)+' / 10:00</button><button id="pcPz" class="pz" title="Mettre le chronomètre en pause (interruption)">⏸ Pause</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
   $("pcP").onclick=function(){go(nextI(pi,-1))};$("pcN").onclick=function(){last?pcStop():go(np)};$("pcX").onclick=pcStop;
   $("pcV").onclick=function(){vidsOn=!vidsOn;if(!vis(pi)){go(nextI(pi,1))}else render()};
   $("pcPz").onclick=function(){paused=!paused;clk()};$("pcT").ondblclick=function(){El=0;paused=false;clk()};clk();
