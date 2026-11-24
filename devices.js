@@ -39,7 +39,7 @@ function maker(g) {
 
 /* ---------- Appareils ---------- */
 const DEVICES = [
-  { id: 'phone', e: '📱', name: 'Téléphone', tag: 'Pas de carte : une puce Wi‑Fi/Bluetooth et un modem 4G/5G soudés sur la carte mère.',
+  { id: 'phone', model: 'Smartphone récent (type iPhone 17 / Galaxy S26) : Wi‑Fi 7, 5G, Bluetooth 6, NFC', e: '📱', name: 'Téléphone', tag: 'Pas de carte : une puce Wi‑Fi/Bluetooth et un modem 4G/5G soudés sur la carte mère.',
     where: 'Puce « combo » Wi‑Fi + Bluetooth, modem mobile et antennes dans le cadre.', net: 'Wi‑Fi, Bluetooth, 4G/5G', form: 'Puces soudées (aucune carte amovible)',
     build(H) {
       H.shell(rrect(1.7, 3.4, 0.25, 0.3), 0, 0, 0, 0xaec3e8);
@@ -54,9 +54,16 @@ const DEVICES = [
       H.part('Antennes dans le cadre', 'Des fines bandes métalliques le long du cadre envoient et reçoivent les ondes radio.', ant, [0, 1.6, 0.15]);
       H.part('Carte SIM', 'Elle identifie l’abonné auprès de l’opérateur (équivalent mobile de l’adresse du réseau).', sim, [0.4, 0.45, 0.1]);
       H.part('Batterie', 'La plus grosse pièce : elle alimente aussi les puces réseau.', bat, [0, -0.75, 0.15]);
+      const cam = [0, 1, 2].map(i => put(H.g, new THREE.CylinderGeometry(0.15, 0.15, 0.08, 20), mat(0x0b0f18, { metalness: 0.6 }), -0.35 + (i % 2) * 0.4, 1.3 - (i > 1 ? 0.4 : 0), -0.14)).map(c => (c.rotation.x = Math.PI / 2, c));
+      const nfc = H.box(0.95, 0.95, 0.02, 0, -0.75, 0.04, 0xb8863b);
+      const usb = H.box(0.34, 0.12, 0.1, 0, -1.5, -0.02, 0x9aa5b8);
+      const uwb = H.box(0.2, 0.2, 0.06, 0.45, 1.0, -0.1, 0x303a52);
+      H.part('Puce NFC / UWB', 'Une bobine de cuivre (NFC) et une puce UWB : paiement sans contact et localisation précise à courte portée. Ce sont aussi des liaisons radio.', [nfc, uwb], [0.45, 1.0, 0.12], true);
+      H.part('Caméras', 'Sans rapport avec le réseau, mais elles produisent les photos que la puce réseau enverra.', cam, [-0.15, 1.2, -0.2]);
+      H.part('Port USB‑C', 'Recharge et échange de données par câble ; certains adaptateurs ajoutent même l’Ethernet.', usb, [0, -1.5, 0.1]);
       return { kind: 'wifi', from: [-0.35, 0.45, 0.2], steps: [['Applications', 'L’application demande d’envoyer un message.'], ['Puce Wi‑Fi', 'La puce transforme les données en trames puis en signal radio.'], ['Antenne', 'L’antenne du cadre envoie l’onde dans l’air.'], ['Point d’accès', 'La box ou l’antenne de l’opérateur reçoit le signal.']] };
     } },
-  { id: 'tablet', e: '📲', name: 'Tablette', tag: 'Comme un grand téléphone : puces Wi‑Fi/Bluetooth (et 4G/5G selon le modèle).',
+  { id: 'tablet', model: 'Tablette haut de gamme (type iPad Pro / Galaxy Tab S) : Wi‑Fi 7, 5G en option', e: '📲', name: 'Tablette', tag: 'Comme un grand téléphone : puces Wi‑Fi/Bluetooth (et 4G/5G selon le modèle).',
     where: 'Puce Wi‑Fi/Bluetooth sur la carte mère, antennes dans le cadre ; modem mobile en option.', net: 'Wi‑Fi, Bluetooth, 4G/5G (option)', form: 'Puces soudées',
     build(H) {
       H.shell(rrect(3.4, 4.4, 0.3, 0.3), 0, 0, 0, 0xaec3e8);
@@ -69,9 +76,17 @@ const DEVICES = [
       H.part('Processeur (et modem)', 'Sur les modèles « cellulaires », il contient aussi le modem 4G/5G.', soc, [0.9, 1.5, 0.1], true);
       H.part('Antennes dans le cadre', 'Elles longent les bords de l’écran.', ant, [0, 2.05, 0.15]);
       H.part('Batterie', 'Très grande : elle occupe la moitié de l’appareil.', bat, [0, -0.9, 0.15]);
+      const cam = H.box(0.3, 0.3, 0.08, 1.3, 1.9, -0.12, 0x0b0f18);
+      const spk = [H.box(0.3, 0.16, 0.14, -1.3, -2.0, -0.05, 0x9aa5b8), H.box(0.3, 0.16, 0.14, 1.3, -2.0, -0.05, 0x9aa5b8)];
+      const usb = H.box(0.36, 0.12, 0.12, 0, -2.1, -0.05, 0xd6dbe8);
+      const uwb = H.box(0.3, 0.25, 0.06, -0.4, 1.4, -0.1, 0x303a52);
+      H.part('Puce UWB / Bluetooth stylet', 'Le stylet se connecte à la tablette par Bluetooth ou par aimant.', uwb, [-0.4, 1.4, 0.1], true);
+      H.part('Caméra', 'Photo et visioconférence : les flux vidéo passent ensuite par le Wi‑Fi.', cam, [1.3, 1.9, 0.0]);
+      H.part('Haut‑parleurs', 'Le son des appels et vidéos reçus par le réseau.', spk, [1.3, -2.0, 0.1]);
+      H.part('Port USB‑C', 'Recharge et accessoires.', usb, [0, -2.1, 0.1]);
       return { kind: 'wifi', from: [0.2, 1.4, 0.2], steps: [['Application', 'Une vidéo en ligne est demandée.'], ['Puce Wi‑Fi', 'Elle fabrique les trames et le signal radio.'], ['Antenne', 'Le signal part vers la box.'], ['Box', 'La box le reçoit et le renvoie vers Internet.']] };
     } },
-  { id: 'watch', e: '⌚', name: 'Montre connectée', tag: 'Une minuscule puce Bluetooth (parfois Wi‑Fi ou 4G) et une antenne dans le boîtier.',
+  { id: 'watch', model: 'Montre connectée récente (type Apple Watch / Galaxy Watch) : Bluetooth, Wi‑Fi, eSIM 4G/5G', e: '⌚', name: 'Montre connectée', tag: 'Une minuscule puce Bluetooth (parfois Wi‑Fi ou 4G) et une antenne dans le boîtier.',
     where: 'Puce Bluetooth sur la mini carte mère, antenne placée autour du cadran.', net: 'Bluetooth (+ Wi‑Fi ou 4G selon le modèle)', form: 'Puce soudée',
     build(H) {
       H.shell(new THREE.CylinderGeometry(1.1, 1.1, 0.5, 40), 0, 0, 0, 0xaec3e8, [Math.PI / 2, 0, 0]);
@@ -85,9 +100,15 @@ const DEVICES = [
       H.part('Antenne', 'Un anneau métallique près du bord capte et émet les ondes.', ring, [0.8, 0.5, 0.1]);
       H.part('Capteurs', 'Cœur, mouvement : leurs données partent ensuite par Bluetooth.', sens, [0.35, -0.35, 0.1]);
       H.part('Batterie', 'Minuscule : le Bluetooth basse consommation est choisi pour économiser l’énergie.', bat, [0, -0.1, 0.0]);
+      const gps = H.box(0.3, 0.25, 0.06, 0.35, 0.4, 0.0, 0x303a52);
+      const crown = cyl(H.g, 0.16, 0.3, 1.2, 0.3, 0, 0xd6dbe8); crown.rotation.z = Math.PI / 2;
+      const hap = H.box(0.5, 0.2, 0.1, -0.3, -0.55, -0.1, 0x6d4aa6);
+      H.part('Puce GPS / UWB', 'Position et distance précises : ce sont des signaux radio reçus par l’antenne.', gps, [0.35, 0.4, 0.15], true);
+      H.part('Moteur de vibration', 'Il fait vibrer la montre à chaque notification reçue par le réseau.', hap, [-0.3, -0.55, 0.05]);
+      H.part('Couronne', 'Bouton de commande sur le côté.', crown, [1.2, 0.3, 0.2]);
       return { kind: 'wifi', from: [-0.2, 0.2, 0.2], steps: [['Capteurs', 'La montre mesure votre rythme cardiaque.'], ['Puce Bluetooth', 'Elle met la mesure en trame radio.'], ['Antenne', 'Le signal part, sur quelques mètres seulement.'], ['Téléphone', 'Le téléphone reçoit la mesure et l’affiche.']] };
     } },
-  { id: 'laptop', e: '💻', name: 'Ordinateur portable', tag: 'Une vraie petite carte Wi‑Fi (format M.2) avec deux fils vers des antennes, et une puce Ethernet.',
+  { id: 'laptop', model: 'Ultraportable récent (type MacBook / ThinkPad) : Wi‑Fi 7 en M.2, Bluetooth 5.4', e: '💻', name: 'Ordinateur portable', tag: 'Une vraie petite carte Wi‑Fi (format M.2) avec deux fils vers des antennes, et une puce Ethernet.',
     where: 'Carte Wi‑Fi M.2 vissée sur la carte mère, fils d’antenne dans l’écran, puce Ethernet près du port RJ45.', net: 'Wi‑Fi, Bluetooth, Ethernet', form: 'Carte M.2 amovible + puce Ethernet',
     build(H) {
       H.shell(new THREE.BoxGeometry(4, 0.25, 2.8), 0, 0, 0, 0xaec3e8);
@@ -106,9 +127,15 @@ const DEVICES = [
       H.part('Puce Ethernet + port RJ45', 'Pour le câble : une puce soudée à la carte mère, reliée au port sur le côté.', [eth, rj], [1.5, 0.15, 0.75], true);
       H.part('Ventilateur', 'Il refroidit le processeur, pas le réseau.', fan, [0.9, 0.15, -0.5]);
       H.part('Batterie', 'Elle alimente tout, y compris la carte Wi‑Fi.', bat, [0, 0.0, 0.95]);
+      const ssd = H.box(0.9, 0.06, 0.28, -0.6, 0.0, -0.45, 0x303a52);
+      const ram = H.box(1.0, 0.05, 0.25, 0.9, 0.0, 0.15, 0x303a52);
+      const usb = [H.box(0.3, 0.16, 0.3, -1.85, 0.0, 0.3, 0x9aa5b8), H.box(0.3, 0.16, 0.3, -1.85, 0.0, 0.7, 0x9aa5b8)];
+      H.part('Disque SSD (M.2)', 'Même format que la carte Wi‑Fi, mais il stocke les fichiers.', ssd, [-0.6, 0.15, -0.45]);
+      H.part('Mémoire vive', 'Les données reçues y sont placées avant d’être traitées.', ram, [0.9, 0.15, 0.15]);
+      H.part('Ports USB‑C / Thunderbolt', 'Recharge, écran et adaptateurs Ethernet.', usb, [-1.85, 0.2, 0.5]);
       return { kind: 'wifi', from: [-0.6, 0.15, 0.2], steps: [['Système', 'Le navigateur demande une page.'], ['Carte Wi‑Fi', 'Elle fabrique les trames et le signal.'], ['Antennes', 'Les antennes de l’écran émettent.'], ['Routeur', 'Le routeur reçoit puis relaie.']] };
     } },
-  { id: 'desktop', e: '🖥️', name: 'Ordinateur de bureau', tag: 'Soit la carte PCIe vue sur le site, soit une puce intégrée près du port RJ45.',
+  { id: 'desktop', model: 'Tour de jeu récente : Wi‑Fi 7 + Ethernet 2,5 Gbit/s intégré (carte PCIe 10 Gbit/s en option)', e: '🖥️', name: 'Ordinateur de bureau', tag: 'Soit la carte PCIe vue sur le site, soit une puce intégrée près du port RJ45.',
     where: 'Carte réseau PCIe dans un slot, ou puce Ethernet intégrée à la carte mère, à côté des ports à l’arrière.', net: 'Ethernet (+ Wi‑Fi en option)', form: 'Carte PCIe amovible ou puce intégrée',
     build(H) {
       H.shell(new THREE.BoxGeometry(2, 3.6, 3.4), 0, 0, 0, 0xaec3e8);
@@ -126,9 +153,17 @@ const DEVICES = [
       H.part('Carte graphique', 'À ne pas confondre avec la carte réseau : elle gère l’image.', gpu, [-0.4, -0.9, 0.2]);
       H.part('Processeur', 'Il prépare les données avant qu’elles passent à la carte réseau.', cpu, [-0.5, 0.5, -0.4]);
       H.part('Alimentation', 'Elle fournit le courant à toutes les cartes.', psu, [0.2, -1.35, -0.9]);
+      const ram = [H.box(0.06, 0.5, 0.28, -0.6, 0.5, 0.05, 0x303a52), H.box(0.06, 0.5, 0.28, -0.6, 0.5, 0.4, 0x303a52)];
+      const ssd = H.box(0.06, 0.3, 0.8, -0.62, 0.1, -1.1, 0x44516e);
+      const fan = cyl(H.g, 0.5, 0.12, 0.9, 0.7, -1.2, 0x222a3b); fan.rotation.z = Math.PI / 2;
+      const wifi = H.box(0.06, 0.28, 0.5, -0.62, -1.5, 1.0, 0xd9a441);
+      H.part('Carte Wi‑Fi 7 (option)', 'Une seconde carte PCIe ou M.2 ajoute le Wi‑Fi à la tour.', wifi, [-0.62, -1.5, 1.0], true);
+      H.part('Mémoire vive', 'Deux barrettes : les données y arrivent par DMA.', ram, [-0.6, 0.5, 0.2]);
+      H.part('Disque SSD', 'Stocke le système et les fichiers.', ssd, [-0.62, 0.1, -1.1]);
+      H.part('Ventilateur du boîtier', 'Brasse l’air.', fan, [0.9, 0.7, -1.2]);
       return { kind: 'wire', path: [[-0.6, -0.1, 1.3], [-0.6, -0.1, 2.0], [0.2, -0.1, 2.8], [1.6, -0.1, 3.6]], steps: [['Processeur', 'Les données sont préparées.'], ['Carte réseau', 'La carte les transforme en signaux électriques.'], ['Câble', 'Les signaux sortent par le port RJ45.'], ['Switch', 'Le commutateur du réseau les dirige.']] };
     } },
-  { id: 'printer', e: '🖨️', name: 'Imprimante', tag: 'Un petit module Wi‑Fi/Ethernet sur sa carte électronique.',
+  { id: 'printer', model: 'Multifonction Wi‑Fi récente (type HP / Epson / Canon) : Wi‑Fi 6, Ethernet, AirPrint', e: '🖨️', name: 'Imprimante', tag: 'Un petit module Wi‑Fi/Ethernet sur sa carte électronique.',
     where: 'Module réseau sur la carte de contrôle, port Ethernet et antenne Wi‑Fi à l’arrière.', net: 'Wi‑Fi, Ethernet, (Wi‑Fi Direct)', form: 'Module soudé ou enfiché',
     build(H) {
       H.shell(new THREE.BoxGeometry(4, 1.6, 3), 0, 0, 0, 0xaec3e8);
@@ -145,9 +180,15 @@ const DEVICES = [
       H.part('Carte de contrôle', 'Elle commande la tête d’impression et reçoit les travaux.', ctl, [1.0, 0.3, 0.3]);
       H.part('Cartouches', 'Réservoirs d’encre : sans rapport avec le réseau.', ink, [-1.2, 0.4, -0.1]);
       H.part('Rouleau d’entraînement', 'Il fait avancer la feuille.', roll, [0, 0.3, 0.9]);
+      const head = H.box(0.6, 0.22, 0.3, -0.2, 0.35, -0.1, 0x6d4aa6);
+      const scr = H.box(0.8, 0.06, 0.5, 1.4, 0.45, 1.0, 0x303a52); scr.rotation.x = -0.3;
+      const tray = H.box(3.0, 0.1, 1.2, 0, -0.6, 0.0, 0x44516e);
+      H.part('Tête d’impression', 'Elle reçoit les points à imprimer depuis la carte de contrôle.', head, [-0.2, 0.55, -0.1]);
+      H.part('Écran tactile', 'Permet de saisir le mot de passe Wi‑Fi.', scr, [1.4, 0.55, 1.0]);
+      H.part('Bac papier', 'Réserve de feuilles.', tray, [0, -0.6, 0]);
       return { kind: 'wifi', from: [1.2, 0.3, 0.3], steps: [['Ordinateur', 'Vous envoyez un document à imprimer.'], ['Réseau', 'Il arrive à l’imprimante par Wi‑Fi ou câble.'], ['Module réseau', 'Il remet les trames en données.'], ['Impression', 'La carte de contrôle lance l’impression.']] };
     } },
-  { id: 'router', e: '📶', name: 'Box / routeur', tag: 'Plusieurs ports : une puce de commutation joue le rôle de plusieurs cartes réseau.',
+  { id: 'router', model: 'Box fibre récente (type Livebox / Freebox / TP‑Link) : Wi‑Fi 7, ports 2,5 Gbit/s, fibre GPON', e: '📶', name: 'Box / routeur', tag: 'Plusieurs ports : une puce de commutation joue le rôle de plusieurs cartes réseau.',
     where: 'Puce « switch » reliée aux ports LAN, puce Wi‑Fi et modem de la ligne (fibre ou ADSL).', net: 'Ethernet (4 ports), Wi‑Fi, fibre/ADSL', form: 'Puces soudées sur une carte unique',
     build(H) {
       H.shell(new THREE.BoxGeometry(3.4, 0.8, 2.2), 0, 0, 0, 0xaec3e8);
@@ -164,9 +205,15 @@ const DEVICES = [
       H.part('Ports Ethernet (LAN)', 'Quatre prises RJ45 pour brancher ordinateurs, console, imprimante.', ports, [1.5, 0.1, -0.2]);
       H.part('Antennes', 'Elles diffusent le Wi‑Fi dans la maison.', ants, [-1.4, 1.9, -0.9]);
       H.part('Voyants', 'Les LED montrent le lien et l’activité, comme sur une carte réseau.', leds, [0, 0.35, 1.1]);
+      const soc = H.box(0.55, 0.1, 0.55, 0.2, -0.1, -0.55, 0x8a93a8);
+      const mem = H.box(0.35, 0.08, 0.3, 0.9, -0.1, 0.5, 0x303a52);
+      const opt = H.box(0.35, 0.22, 0.4, -1.55, -0.05, 0.5, 0x2b8f6f);
+      H.part('Processeur de la box', 'Fait tourner le logiciel du routeur : pare‑feu, DHCP, NAT.', soc, [0.2, 0.1, -0.55], true);
+      H.part('Mémoire', 'Retient les tables d’adresses MAC et IP.', mem, [0.9, 0.1, 0.5]);
+      H.part('Prise fibre (SC/APC)', 'Là où arrive la fibre optique : la lumière est convertie en signal électrique.', opt, [-1.55, 0.2, 0.5], true);
       return { kind: 'wire', path: [[1.5, -0.1, -0.3], [0.2, -0.1, 0.1], [-1.0, -0.1, 0.5], [-3.2, -0.1, 0.8]], steps: [['Port LAN', 'Un ordinateur branché envoie ses trames.'], ['Puce switch', 'Elle lit l’adresse MAC et choisit la sortie.'], ['Modem', 'Le modem convertit pour la ligne de l’opérateur.'], ['Internet', 'Les données partent vers Internet.']] };
     } },
-  { id: 'server', e: '🗄️', name: 'Serveur', tag: 'Des cartes très rapides (SFP+, 25 ou 100 Gbit/s) et parfois des SmartNIC.',
+  { id: 'server', model: 'Serveur rack 1U récent : carte 100 GbE (type NVIDIA ConnectX / Intel E810), SmartNIC/DPU', e: '🗄️', name: 'Serveur', tag: 'Des cartes très rapides (SFP+, 25 ou 100 Gbit/s) et parfois des SmartNIC.',
     where: 'Carte réseau PCIe à l’arrière, avec cages SFP+ pour la fibre ; SmartNIC/DPU dans les grands centres de données.', net: 'Ethernet 10/25/100 Gbit/s, fibre SFP+', form: 'Carte PCIe amovible (souvent 2 cartes)',
     build(H) {
       H.shell(new THREE.BoxGeometry(4.2, 0.7, 3.2), 0, 0, 0, 0xaec3e8);
@@ -183,9 +230,14 @@ const DEVICES = [
       H.part('Mémoire', 'Là où le DMA de la carte écrit les données reçues.', ram, [-1.2, 0.2, 0.1]);
       H.part('Ventilateurs', 'Rangée de ventilateurs : un serveur chauffe beaucoup.', fans, [-0.6, 0.2, -1.1]);
       H.part('Alimentation', 'Souvent doublée pour ne jamais s’éteindre.', psu, [-1.5, 0.2, 1.05]);
+      const disks = []; for (let i = 0; i < 4; i++) disks.push(H.box(0.5, 0.3, 0.2, -1.6 + i * 0.6, -0.05, -1.5, 0x44516e));
+      const dpu = H.box(0.9, 0.06, 0.5, 1.5, -0.1, 0.25, 0xd9a441);
+      const heat = H.box(0.4, 0.2, 0.4, 1.7, 0.0, 0.25, 0x8a93a8);
+      H.part('SmartNIC / DPU', 'Carte réseau « intelligente » : elle exécute elle‑même du chiffrement, du filtrage et du stockage réseau, pour soulager le processeur.', [dpu, heat], [1.5, 0.15, 0.25], true);
+      H.part('Disques NVMe (avant)', 'Les données stockées, accessibles aussi par le réseau.', disks, [-0.9, 0.2, -1.5]);
       return { kind: 'wire', path: [[1.9, -0.05, 1.3], [2.4, -0.05, 2.0], [3.6, -0.05, 2.6], [5.0, -0.05, 3.0]], steps: [['Mémoire', 'Les données à envoyer sont prêtes.'], ['Carte SFP+', 'Elle les prend par DMA et fabrique les trames.'], ['Module fibre', 'Il transforme l’électrique en lumière.'], ['Réseau du centre', 'La fibre les emporte vers les autres serveurs.']] };
     } },
-  { id: 'iot', e: '💡', name: 'Objet connecté', tag: 'Un module Wi‑Fi de la taille d’un timbre (type ESP32) avec une antenne imprimée.',
+  { id: 'iot', model: 'Ampoule connectée Matter (type Philips Hue / IKEA) : Wi‑Fi, Thread, Bluetooth', e: '💡', name: 'Objet connecté', tag: 'Un module Wi‑Fi de la taille d’un timbre (type ESP32) avec une antenne imprimée.',
     where: 'Module radio minuscule sur la carte de l’objet, avec une antenne dessinée directement sur le circuit.', net: 'Wi‑Fi (parfois Bluetooth, Zigbee)', form: 'Module soudé',
     build(H) {
       H.shell(new THREE.SphereGeometry(1.4, 32, 24), 0, 1.0, 0, 0xaec3e8); H.shell(new THREE.CylinderGeometry(0.8, 0.9, 1.4, 24), 0, -0.8, 0, 0xaec3e8);
@@ -200,26 +252,44 @@ const DEVICES = [
       H.part('Antenne imprimée', 'Un zigzag de cuivre gravé sur le circuit sert d’antenne.', antm, [0.45, -0.3, 0.1]);
       H.part('LED', 'Ce que l’on commande à distance.', leds, [0, 1.2, 0]);
       H.part('Alimentation', 'Transforme le courant de la maison en tension pour la puce et les LED.', drv, [0, -1.2, 0.2]);
+      const base = cyl(H.g, 0.5, 0.4, 0, -1.7, 0, 0xb7bfcc);
+      const heat = cyl(H.g, 0.75, 0.25, 0, -0.15, 0, 0x8a93a8);
+      const thr = H.box(0.3, 0.08, 0.3, 0.0, -0.45, -0.45, 0x303a52);
+      H.part('Puce Thread / Zigbee (Matter)', 'Un second module radio basse consommation, pour dialoguer avec les autres objets de la maison.', thr, [0, -0.3, -0.45], true);
+      H.part('Radiateur', 'Dissipe la chaleur des LED.', heat, [0, -0.15, 0.3]);
+      H.part('Culot à vis', 'Là où l’ampoule reçoit le courant 230 V.', base, [0, -1.7, 0.3]);
       return { kind: 'wifi', from: [-0.2, -0.3, 0.1], steps: [['Application', 'Vous appuyez sur « allumer » dans l’application.'], ['Box', 'La commande arrive par le Wi‑Fi de la maison.'], ['Module Wi‑Fi', 'Il reçoit la trame et lit la commande.'], ['LED', 'Il allume les LED.']] };
     } },
-  { id: 'car', e: '🚗', name: 'Voiture', tag: 'Un boîtier « télématique » avec modem 4G/5G, une antenne sur le toit et un réseau interne.',
-    where: 'Boîtier télématique (TCU) avec modem mobile et GPS, antenne « aileron » sur le toit, écran multimédia Wi‑Fi/Bluetooth.', net: '4G/5G, GPS, Wi‑Fi, Bluetooth, Ethernet interne', form: 'Boîtiers électroniques dans le véhicule',
+  { id: 'car', model: 'Voiture électrique récente (type Tesla Model 3 / Model Y) : 4G/5G, Wi‑Fi, Bluetooth, Ethernet interne', e: '🚗', name: 'Voiture', tag: 'Une voiture électrique récente est un ordinateur sur roues : modem 4G/5G, Wi‑Fi, Bluetooth et un vrai réseau Ethernet interne.',
+    where: 'Boîtier télématique (TCU) avec modem mobile et GPS, antennes dans le toit et le pare‑chocs, écran central Wi‑Fi/Bluetooth, calculateur central relié aux autres boîtiers par Ethernet automobile.', net: '4G/5G, GPS, Wi‑Fi, Bluetooth, Ethernet interne', form: 'Boîtiers électroniques dans le véhicule',
     build(H) {
-      H.shell(new THREE.BoxGeometry(5, 0.9, 2), 0, 0.7, 0, 0xaec3e8); H.shell(new THREE.BoxGeometry(2.6, 0.7, 1.8), -0.1, 1.5, 0, 0xaec3e8);
-      [[-1.6, -1], [1.6, -1], [-1.6, 1], [1.6, 1]].forEach(w => { const c = cyl(H.g, 0.4, 0.3, w[0], 0.4, w[1], 0x222a3b); c.rotation.x = Math.PI / 2; });
-      const fin = put(H.g, new THREE.ConeGeometry(0.22, 0.45, 4), mat(0xd6dbe8), -0.4, 2.05, 0); fin.rotation.z = -0.3;
-      const tcu = H.box(0.7, 0.3, 0.8, 0.9, 1.1, 0.0, 0xd9a441);
-      const scr = H.box(0.1, 0.5, 0.9, 0.8, 1.5, 0.0, 0x303a52);
-      const bat = H.box(0.8, 0.4, 0.6, 2.0, 0.8, 0.0, 0x44516e);
-      const w1 = H.box(1.8, 0.05, 0.05, 0.0, 0.62, 0.3, 0x38bdf8), w2 = H.box(0.05, 0.05, 1.0, 0.9, 0.62, 0, 0x38bdf8), w3 = H.box(1.7, 0.05, 0.05, -1.0, 0.62, -0.3, 0xff7a59);
-      H.part('Antenne aileron (toit)', 'Une seule antenne rassemble souvent 4G/5G, GPS et radio.', fin, [-0.4, 2.2, 0], false);
-      H.part('Boîtier télématique (TCU)', 'Le « modem » de la voiture : appels d’urgence, mises à jour à distance, suivi.', tcu, [0.9, 1.1, 0], true);
-      H.part('Écran multimédia', 'Connecte le téléphone en Bluetooth ou Wi‑Fi (Apple CarPlay, Android Auto).', scr, [0.8, 1.5, 0], true);
-      H.part('Réseau interne', 'Les calculateurs communiquent par bus CAN et par Ethernet automobile, avec leurs propres contrôleurs réseau.', [w1, w2, w3], [0, 0.65, 0.3]);
-      H.part('Batterie', 'Alimente tous les boîtiers.', bat, [2.0, 0.8, 0]);
-      return { kind: 'wifi', from: [-0.4, 2.2, 0], steps: [['Capteurs', 'La voiture détecte un événement (ou une mise à jour).'], ['Boîtier TCU', 'Le modem prépare le message pour l’opérateur.'], ['Antenne', 'L’antenne du toit émet vers le réseau mobile.'], ['Constructeur', 'Les serveurs du constructeur répondent.']] };
+      const s = new THREE.Shape(); s.moveTo(-2.4, 0.4); s.lineTo(-2.4, 1.0); s.quadraticCurveTo(-2.35, 1.15, -1.9, 1.2); s.quadraticCurveTo(-1.0, 1.9, 0.1, 1.9); s.quadraticCurveTo(0.9, 1.9, 1.4, 1.25); s.quadraticCurveTo(2.2, 1.1, 2.4, 0.9); s.lineTo(2.4, 0.4); s.lineTo(-2.4, 0.4);
+      const bg = new THREE.ExtrudeGeometry(s, { depth: 1.9, bevelEnabled: true, bevelSize: 0.08, bevelThickness: 0.08, bevelSegments: 3, curveSegments: 14 }); bg.translate(0, 0, -0.95);
+      H.shell(bg, 0, 0, 0, 0xaec3e8);
+      [[-1.55, -1.0], [1.55, -1.0], [-1.55, 1.0], [1.55, 1.0]].forEach(w => { const c = cyl(H.g, 0.42, 0.3, w[0], 0.42, w[1], 0x222a3b); c.rotation.x = Math.PI / 2; const r = cyl(H.g, 0.22, 0.32, w[0], 0.42, w[1], 0x9aa5b8); r.rotation.x = Math.PI / 2; });
+      const pack = H.box(3.4, 0.16, 1.6, 0, 0.5, 0, 0x44516e);
+      const cells = []; for (let i = 0; i < 8; i++) cells.push(H.box(0.36, 0.06, 1.5, -1.5 + i * 0.43, 0.62, 0, 0x2b8f6f));
+      const mR = cyl(H.g, 0.22, 0.8, -1.55, 0.55, 0, 0x8a93a8); mR.rotation.x = Math.PI / 2;
+      const mF = cyl(H.g, 0.22, 0.8, 1.55, 0.55, 0, 0x8a93a8); mF.rotation.x = Math.PI / 2;
+      const fsd = H.box(0.6, 0.1, 0.8, 1.0, 1.0, 0, 0xd9a441);
+      const tcu = H.box(0.5, 0.12, 0.45, 0.1, 1.0, 0.65, 0xd9a441);
+      const scr = H.box(0.06, 0.5, 0.9, 0.7, 1.35, 0, 0x303a52); scr.rotation.z = -0.25;
+      const fin = put(H.g, new THREE.ConeGeometry(0.2, 0.4, 4), mat(0xd6dbe8), -1.2, 2.0, 0); fin.rotation.z = -0.3;
+      const cam = [H.box(0.1, 0.1, 0.1, 2.38, 0.85, -0.5, 0x0b0f18), H.box(0.1, 0.1, 0.1, 2.38, 0.85, 0.5, 0x0b0f18), H.box(0.1, 0.1, 0.1, 0.1, 1.85, 0, 0x0b0f18)];
+      const chg = H.box(0.1, 0.25, 0.35, -2.42, 0.85, 0.7, 0xb7bfcc);
+      const w1 = H.box(1.9, 0.05, 0.05, 0.1, 0.76, 0.35, 0x38bdf8), w2 = H.box(0.05, 0.05, 0.65, 1.0, 0.76, 0.0, 0x38bdf8), w3 = H.box(2.3, 0.05, 0.05, -1.1, 0.76, -0.35, 0xff7a59);
+      H.part('Antennes 4G/5G, GPS, Wi‑Fi', 'Une antenne « aileron » ou intégrée au toit en verre rassemble 4G/5G, GPS et radio.', fin, [-1.2, 2.2, 0]);
+      H.part('Boîtier télématique (TCU)', 'Le « modem » de la voiture : appels d’urgence, mises à jour à distance (OTA), suivi.', tcu, [0.1, 1.15, 0.65], true);
+      H.part('Calculateur central', 'Ordinateur de bord (écran, aide à la conduite) : il reçoit les mises à jour et relie les caméras et capteurs par Ethernet.', fsd, [1.0, 1.15, 0], true);
+      H.part('Écran central', 'Connecte le téléphone en Bluetooth ou Wi‑Fi ; affiche cartes et vidéos reçues par le réseau.', scr, [0.7, 1.6, 0], true);
+      H.part('Réseau interne', 'Les calculateurs communiquent par Ethernet automobile (et bus CAN) : chacun a son contrôleur réseau.', [w1, w2, w3], [0, 0.85, 0.35]);
+      H.part('Caméras et radars', 'Leurs images circulent sur le réseau interne vers le calculateur central.', cam, [2.38, 1.0, 0]);
+      H.part('Batterie haute tension', 'Un grand pack plat sous le plancher : il alimente aussi tous les boîtiers électroniques.', [pack, ...cells], [0, 0.65, 0]);
+      H.part('Moteurs électriques', 'Un moteur par essieu : sans rapport avec le réseau, mais pilotés par des messages réseau.', [mR, mF], [-1.55, 0.8, 0]);
+      H.part('Prise de charge', 'La recharge échange aussi des données avec la borne (identification, facturation).', chg, [-2.42, 1.05, 0.7]);
+      return { kind: 'wifi', from: [-1.2, 2.2, 0], steps: [['Calculateur central', 'La voiture détecte un événement ou demande une mise à jour.'], ['Boîtier TCU', 'Le modem prépare le message pour l’opérateur.'], ['Antenne', 'L’antenne émet vers le réseau mobile.'], ['Constructeur', 'Les serveurs du constructeur répondent, parfois avec une mise à jour.']] };
     } },
-  { id: 'console', e: '🎮', name: 'Console de jeu', tag: 'Un module Wi‑Fi/Bluetooth et une puce Ethernet, comme un petit PC.',
+  { id: 'console', model: 'Console de salon récente (type PlayStation 5 / Xbox Series X) : Wi‑Fi 6/6E, Bluetooth, Ethernet 1 Gbit/s', e: '🎮', name: 'Console de jeu', tag: 'Un module Wi‑Fi/Bluetooth et une puce Ethernet, comme un petit PC.',
     where: 'Module Wi‑Fi + Bluetooth sur la carte mère, puce Ethernet reliée au port RJ45 à l’arrière.', net: 'Ethernet, Wi‑Fi, Bluetooth (manettes)', form: 'Module soudé + puce Ethernet',
     build(H) {
       H.shell(new THREE.BoxGeometry(3.6, 0.9, 2.4), 0, 0, 0, 0xaec3e8);
@@ -237,22 +307,95 @@ const DEVICES = [
       H.part('Processeur graphique et central', 'Calcule le jeu ; la carte réseau lui apporte les données des autres joueurs.', [soc, sink], [0.2, 0.3, 0.1]);
       H.part('Ventilateur', 'Évite que la console ne chauffe.', fan, [-1.0, 0.1, -0.5]);
       H.part('Alimentation', 'Intégrée dans le boîtier.', psu, [1.2, 0.2, 0.7]);
+      const ssd = H.box(0.8, 0.06, 0.3, -0.9, -0.22, -0.1, 0x303a52);
+      const gddr = [H.box(0.3, 0.1, 0.3, -0.35, -0.2, 0.45, 0x44516e), H.box(0.3, 0.1, 0.3, 0.75, -0.2, 0.45, 0x44516e)];
+      const bd = H.box(0.9, 0.2, 1.0, -1.3, 0.1, -0.5, 0x222a3b);
+      H.part('SSD ultra rapide', 'Charge les jeux ; les mises à jour arrivent par le réseau.', ssd, [-0.9, -0.05, -0.1]);
+      H.part('Mémoire graphique', 'Reçoit les données de jeu.', gddr, [0.2, 0.0, 0.45]);
+      H.part('Lecteur de disque', 'Pour les jeux sur disque.', bd, [-1.3, 0.3, -0.5]);
       return { kind: 'wire', path: [[1.6, -0.1, -0.9], [2.3, -0.1, -1.6], [3.2, -0.1, -2.6], [4.4, -0.1, -3.4]], steps: [['Jeu', 'Le jeu envoie votre position.'], ['Puce Ethernet', 'Elle met la position dans une trame.'], ['Câble', 'La trame part par le port RJ45.'], ['Serveur de jeu', 'Le serveur la reçoit et répond avec les autres joueurs.']] };
     } },
 ];
 window.DEVICES_DATA = DEVICES.map(d => ({ id: d.id, name: d.name, where: d.where, net: d.net, form: d.form }));
 
+
+/* Détails : petits composants (condensateurs, puces, pistes) semés sur les cartes électroniques */
+function decorate(g, seed) {
+  let a = 0; for (const ch of seed) a = (a * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+  g.updateMatrixWorld(true);
+  const solid = []; g.traverse(o => { if (o.isMesh && o.userData.part) solid.push(new THREE.Box3().setFromObject(o).expandByScalar(0.04)); });
+  const boards = []; g.traverse(o => { if (o.isMesh && o.geometry.type === 'BoxGeometry' && o.material.color && o.material.color.getHex() === 0x14634a && !o.userData.part) boards.push(o); });
+  const deco = new THREE.Group(); g.add(deco);
+  const cols = [0x1b2233, 0x6b4f1d, 0xb8863b, 0x2a3350, 0x9aa5b8];
+  boards.forEach(b => {
+    const P = b.geometry.parameters, flat = P.height <= P.width && P.height <= P.depth, thick = P.height;
+    // on pose les composants sur la face la plus grande
+    const dims = [P.width, P.height, P.depth], ax = dims.indexOf(Math.min(...dims));
+    const n = Math.min(26, Math.round(dims.reduce((p, c, i) => i === ax ? p : p * c, 1) * 14));
+    for (let i = 0; i < n; i++) {
+      const u = (rnd() - 0.5) * (ax === 0 ? 0 : P.width) * 0.9, v = (rnd() - 0.5) * (ax === 1 ? 0 : P.height) * 0.9, w = (rnd() - 0.5) * (ax === 2 ? 0 : P.depth) * 0.9;
+      const sz = 0.03 + rnd() * 0.06, big = rnd() < 0.18, c = cols[Math.floor(rnd() * cols.length)];
+      const dim = [sz * (big ? 2.4 : 1.2), sz * (big ? 2.4 : 1.2), sz * (big ? 2.4 : 1.2)]; dim[ax] = sz * 0.8;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(...dim), new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.5 }));
+      const off = [0, 0, 0]; off[ax] = dims[ax] / 2 + dim[ax] / 2;
+      m.position.copy(b.position); m.position.add(new THREE.Vector3(u + off[0], v + off[1], w + off[2]).applyEuler(b.rotation));
+      m.rotation.copy(b.rotation);
+      const bb = new THREE.Box3().setFromObject(m); m.updateMatrixWorld(); bb.setFromObject(m);
+      if (solid.some(x => x.intersectsBox(bb))) { m.geometry.dispose(); m.material.dispose(); continue; }
+      deco.add(m);
+    }
+    // pistes lumineuses
+    const tm = new THREE.MeshBasicMaterial({ color: 0x3ddc97, transparent: true, opacity: 0.55 });
+    for (let i = 0; i < 6; i++) {
+      const len = 0.3 + rnd() * 0.6, dim = [len, len, len]; dim[ax] = 0.012; const k = [0, 1, 2].filter(q => q !== ax)[rnd() < 0.5 ? 0 : 1]; dim[k] = len; [0, 1, 2].filter(q => q !== ax && q !== k).forEach(q => dim[q] = 0.012);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(...dim), tm);
+      const off = [0, 0, 0]; off[ax] = dims[ax] / 2 + 0.008; const pos = [(rnd() - 0.5) * P.width * 0.8, (rnd() - 0.5) * P.height * 0.8, (rnd() - 0.5) * P.depth * 0.8]; pos[ax] = 0;
+      m.position.copy(b.position); m.position.add(new THREE.Vector3(pos[0] + off[0], pos[1] + off[1], pos[2] + off[2]).applyEuler(b.rotation)); m.rotation.copy(b.rotation);
+      m.updateMatrixWorld(); const bb = new THREE.Box3().setFromObject(m);
+      if (solid.some(x => x.intersectsBox(bb))) { m.geometry.dispose(); continue; }
+      deco.add(m);
+    }
+  });
+}
+function fitView(g, cam, aspect, ang) {
+  const bb = new THREE.Box3().setFromObject(g), ct = bb.getCenter(new THREE.Vector3()), rad = bb.getSize(new THREE.Vector3()).length() / 2;
+  const dist = Math.max(4, rad / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * (aspect < 1.2 ? 1.15 : 0.95));
+  const hr = dist * 0.93, a = ang === undefined ? Math.atan2(0.75, 0.55) : ang;
+  cam.position.set(ct.x + hr * Math.cos(a), ct.y + dist * 0.38, ct.z + hr * Math.sin(a)); cam.lookAt(ct); return { ct, dist };
+}
+let thumbCache = null, galTimer = null;
+function makeThumbs() {
+  if (thumbCache) return thumbCache;
+  const W = 360, Hh = 270, N = 12, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
+  const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true }); r.setSize(W, Hh, false);
+  const sc = new THREE.Scene(); sc.background = new THREE.Color(0x0b1220);
+  sc.add(new THREE.HemisphereLight(0xcfe3ff, 0x1a2540, 1.1)); const k = new THREE.DirectionalLight(0xffffff, 1.6); k.position.set(4, 7, 5); sc.add(k);
+  const f = new THREE.DirectionalLight(0x6ea8ff, 0.7); f.position.set(-5, 2, -4); sc.add(f);
+  const cam = new THREE.PerspectiveCamera(40, W / Hh, 0.1, 100), out = {};
+  DEVICES.forEach(d => {
+    const g = new THREE.Group(), m = maker(g); m.H.g = g; d.build(m.H); decorate(g, d.id);
+    m.shells.forEach(s => { s.m.material.opacity = 0.16; s.m.material.depthWrite = false; s.e.material.opacity = 0.55; });
+    m.parts.forEach(p => { if (p.net) p.meshes.forEach(q => { q.material.emissiveIntensity = 0.55; }); });
+    sc.add(g); out[d.id] = [];
+    for (let i = 0; i < N; i++) { fitView(g, cam, W / Hh, Math.PI * 2 * i / N + 0.9); r.render(sc, cam); out[d.id].push(cv.toDataURL('image/jpeg', 0.82)); }
+    sc.remove(g); g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose && o.material.dispose(); });
+  });
+  r.dispose(); try { r.forceContextLoss(); } catch (e) { }
+  return (thumbCache = out);
+}
+
 /* ---------- Interface et rendu ---------- */
-let frames = 0, root, canvas, renderer, scene, camera, controls, cur = null, curG = null, curB = null, running = false, sel = null, actOn = false, actT0 = 0, xray = true, fx = null, ray, built = false;
+let frames = 0, root, canvas, renderer, scene, camera, controls, cur = null, curG = null, curB = null, running = false, sel = null, actOn = false, actT0 = 0, xray = false, xk = 0, xTimer = 0, fx = null, ray, built = false;
 const $ = (s, el = root) => el.querySelector(s);
 
 function ui() {
   root.innerHTML = '<div class="dv"><aside class="dv-list"><h3>Autres appareils</h3><div id="dvBtns"></div><button id="dvCmp" class="dvb">⚖ Comparer</button></aside>' +
-    '<div class="dv-main"><canvas id="dvCv"></canvas><div id="dvPins"></div><div class="dv-tools"><button id="dvX" class="dvb on" title="Rendre le boîtier transparent">🩻 Rayons X</button><button id="dvA" class="dvb am">⚡ Action</button></div><div id="dvCap" class="dv-cap" hidden></div>' +
+    '<div class="dv-main"><canvas id="dvCv"></canvas><div id="dvPins"></div><div class="dv-tools"><button id="dvX" class="dvb" title="Rendre le boîtier transparent">🩻 Rayons X</button><button id="dvA" class="dvb am">⚡ Action</button></div><div id="dvCap" class="dv-cap" hidden></div>' +
     '<div id="dvCmpBox" class="dv-cmp" hidden></div></div><aside class="dv-info" id="dvInfo"></aside></div>';
   const bt = $('#dvBtns');
   DEVICES.forEach(d => { const b = document.createElement('button'); b.className = 'dvb'; b.dataset.id = d.id; b.innerHTML = '<span>' + d.e + '</span> ' + d.name; b.onclick = () => show(d.id); bt.appendChild(b); });
-  $('#dvX').onclick = () => { xray = !xray; $('#dvX').classList.toggle('on', xray); applyXray(); };
+  $('#dvX').onclick = () => { clearTimeout(xTimer); setX(!xray); };
   $('#dvA').onclick = () => startAct();
   $('#dvCmp').onclick = () => { const c = $('#dvCmpBox'); c.hidden = !c.hidden; if (!c.hidden) cmp(); };
   canvas = $('#dvCv');
@@ -280,17 +423,16 @@ function show(id) {
   const d = DEVICES.find(x => x.id === id); if (!d) return;
   stopAct(); sel = null;
   if (curG) { scene.remove(curG); curG.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose && o.material.dispose(); }); }
-  curG = new THREE.Group(); const m = maker(curG); m.H.g = curG; const info = d.build(m.H);
+  curG = new THREE.Group(); const m = maker(curG); m.H.g = curG; const info = d.build(m.H); decorate(curG, d.id);
   curB = { d, parts: m.parts, shells: m.shells, act: info }; cur = d; scene.add(curG);
-  xray = true; $('#dvX').classList.add('on'); applyXray();
+  clearTimeout(xTimer); xray = false; xk = 0; $('#dvX').classList.remove('on'); applyXray();
+  xTimer = setTimeout(() => { if (cur === d) setX(true); }, 1300);
   resize();
-  const bb = new THREE.Box3().setFromObject(curG), ct = bb.getCenter(new THREE.Vector3()), rad = bb.getSize(new THREE.Vector3()).length() / 2;
-  const dist = Math.max(4, rad / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.95);
-  controls.target.copy(ct); camera.position.set(ct.x + dist * 0.55, ct.y + dist * 0.38, ct.z + dist * 0.75); controls.autoRotate = true; controls.update();
+  const fv = fitView(curG, camera, camera.aspect); controls.target.copy(fv.ct); controls.autoRotate = true; controls.update();
   [].forEach.call(root.querySelectorAll('#dvBtns .dvb'), b => b.classList.toggle('on', b.dataset.id === id));
   $('#dvCmpBox').hidden = true;
   const I = $('#dvInfo');
-  I.innerHTML = '<h2>' + d.e + ' ' + d.name + '</h2><p class="tag">' + d.tag + '</p><div class="where"><b>Où est la carte réseau ?</b><span>' + d.where + '</span></div>' +
+  I.innerHTML = '<h2>' + d.e + ' ' + d.name + '</h2><p class="tag">' + d.tag + '</p><p class="model"><b>Modèle représenté :</b> ' + d.model + '</p><div class="where"><b>Où est la carte réseau ?</b><span>' + d.where + '</span></div>' +
     '<div class="dv-meta"><div><b>Réseaux</b>' + d.net + '</div><div><b>Forme</b>' + d.form + '</div></div><h4>Pièces (cliquez sur l’une d’elles)</h4><ol id="dvParts"></ol><div id="dvDet" class="det"><b>Touchez une pièce.</b> Les pièces ambrées sont celles qui font le travail de carte réseau.</div><p class="common">' + COMMON + '</p>';
   const ol = $('#dvParts');
   curB.parts.forEach(p => { const li = document.createElement('li'); li.className = p.net ? 'net' : ''; li.innerHTML = '<button>' + p.name + '</button>'; li.firstChild.onclick = () => select(p); ol.appendChild(li); });
@@ -300,12 +442,14 @@ function buildPins() {
   const P = $('#dvPins'); P.innerHTML = '';
   curB.parts.forEach((p, i) => { const e = document.createElement('div'); e.className = 'dv-pin' + (p.net ? ' net' : ''); e.textContent = i + 1; P.appendChild(e); p.pin = e; });
 }
+function setX(v) { xray = v; $('#dvX').classList.toggle('on', xray); }
 function applyXray() {
-  if (!curB) return;
-  curB.shells.forEach(s => { s.m.material.opacity = xray ? 0.16 : 0.92; s.m.material.depthWrite = !xray; s.e.material.opacity = xray ? 0.55 : 0.25; });
+  if (!curB) return; const o = 0.92 - xk * 0.76;
+  curB.shells.forEach(s => { s.m.material.opacity = o; s.m.material.depthWrite = xk < 0.5; s.e.material.opacity = 0.25 + xk * 0.3; });
+  if (curB.parts) curB.parts.forEach(p => { if (p.pin) p.pin.style.opacity = xk > 0.5 ? 1 : 0; });
 }
 function select(p) {
-  sel = p;
+  sel = p; clearTimeout(xTimer); if (!xray) setX(true);
   curB.parts.forEach(q => { q.meshes.forEach(m => { m.material.emissive.setHex(q === p ? CY : (q.net ? AMB : 0)); m.userData.base = q === p ? 0.9 : (q.net ? 0.45 : 0); m.material.emissiveIntensity = m.userData.base; }); });
   [].forEach.call(root.querySelectorAll('#dvParts li'), (li, i) => li.classList.toggle('on', curB.parts[i] === p));
   $('#dvDet').innerHTML = '<b>' + (p.id + 1) + ' · ' + p.name + '</b>' + p.text;
@@ -319,8 +463,22 @@ function pick(e) {
 }
 function cmp() {
   const rows = DEVICES.map(d => '<tr><td>' + d.e + ' <b>' + d.name + '</b></td><td>' + d.where + '</td><td>' + d.net + '</td><td>' + d.form + '</td></tr>').join('');
-  $('#dvCmpBox').innerHTML = '<button class="dvb x" id="dvCx">✕ Fermer</button><h3>Comparaison : même fonction, formes différentes</h3><div class="sc"><table><thead><tr><th>Appareil</th><th>Où se trouve la carte réseau</th><th>Réseaux</th><th>Forme</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-  $('#dvCx').onclick = () => { $('#dvCmpBox').hidden = true; };
+  $('#dvCmpBox').innerHTML = '<button class="dvb x" id="dvCx">✕ Fermer</button><h3>Comparaison : même fonction, formes différentes</h3><div class="sc"><table><thead><tr><th>Appareil</th><th>Où se trouve la carte réseau</th><th>Réseaux</th><th>Forme</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<h3 class="gh">Les 11 appareils en 3D (vue rayons X)</h3><p class="gs">Passez la souris sur une vignette pour la faire tourner ; cliquez pour l’ouvrir. Les pièces ambrées sont celles qui font le travail de carte réseau.</p><div class="dv-gal" id="dvGal"><p class="gs">Préparation des vues 3D…</p></div>';
+  $('#dvCx').onclick = () => { $('#dvCmpBox').hidden = true; clearInterval(galTimer); };
+  setTimeout(() => {
+    const G = $('#dvGal'); if (!G) return; let T; try { T = makeThumbs(); } catch (e) { G.innerHTML = '<p class="gs">Vues 3D indisponibles sur cet appareil.</p>'; return; }
+    G.innerHTML = ''; const ims = [];
+    DEVICES.forEach(d => {
+      const b = document.createElement('button'); b.className = 'dv-th'; b.innerHTML = '<img alt="' + d.name + '" src="' + T[d.id][0] + '"><span>' + d.e + ' ' + d.name + '</span>';
+      const im = b.firstChild, st = { i: 0, hov: false, im, id: d.id }; ims.push(st);
+      b.onmouseenter = () => { st.hov = true; }; b.onmouseleave = () => { st.hov = false; };
+      b.onmousemove = e => { const r = b.getBoundingClientRect(); st.i = Math.min(T[d.id].length - 1, Math.floor((e.clientX - r.left) / r.width * T[d.id].length)); im.src = T[d.id][st.i]; };
+      b.onclick = () => { $('#dvCmpBox').hidden = true; clearInterval(galTimer); show(d.id); };
+      G.appendChild(b);
+    });
+    clearInterval(galTimer); galTimer = setInterval(() => { if ($('#dvCmpBox').hidden) { clearInterval(galTimer); return; } ims.forEach(st => { if (st.hov) return; st.i = (st.i + 1) % T[st.id].length; st.im.src = T[st.id][st.i]; }); }, 220);
+  }, 60);
 }
 /* Action : signal radio ou câble */
 function startAct() {
@@ -341,18 +499,19 @@ function loop(now) {
   if (!running) return; requestAnimationFrame(loop);
   if ((++frames % 45) === 0) resize();
   controls.update();
+  { const t = xray ? 1 : 0; if (Math.abs(xk - t) > 0.004) { xk += (t - xk) * 0.12; applyXray(); } else if (xk !== t) { xk = t; applyXray(); } }
   if (actOn && fx) actTick(now);
   if (curB) {
     const pul = 0.35 + 0.25 * Math.sin(now / 350);
     curB.parts.forEach(p => { if (p === sel) return; p.meshes.forEach(m => { if (p.net) m.material.emissiveIntensity = pul + 0.2; }); });
     const r = canvas.getBoundingClientRect(), v = new THREE.Vector3();
-    curB.parts.forEach(p => { v.set(...p.label).applyMatrix4(curG.matrixWorld).project(camera); const x = (v.x * 0.5 + 0.5) * r.width, y = (-v.y * 0.5 + 0.5) * r.height; p.pin.style.transform = 'translate(' + (x - 11) + 'px,' + (y - 11) + 'px)'; p.pin.style.opacity = v.z < 1 ? 1 : 0; p.pin.classList.toggle('on', p === sel); });
+    curB.parts.forEach(p => { v.set(...p.label).applyMatrix4(curG.matrixWorld).project(camera); const x = (v.x * 0.5 + 0.5) * r.width, y = (-v.y * 0.5 + 0.5) * r.height; p.pin.style.transform = 'translate(' + (x - 11) + 'px,' + (y - 11) + 'px)'; p.pin.style.opacity = (v.z < 1 && xk > 0.5) ? 1 : 0; p.pin.classList.toggle('on', p === sel); });
   }
   renderer.render(scene, camera);
 }
 const API = {
   open(id) { root = root || document.getElementById('ov-devices'); if (!built) { ui(); } window.__devOpen = true; running = true; resize(); if (!cur) show(id || DEVICES[0].id); else if (id) show(id); requestAnimationFrame(loop); },
-  close() { running = false; window.__devOpen = false; stopAct(); },
+  close() { clearInterval(galTimer); running = false; window.__devOpen = false; stopAct(); },
   show(id) { API.open(id); },
   act() { startAct(); },
   stopAct,
