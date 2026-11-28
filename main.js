@@ -649,6 +649,7 @@ $('bReset').onclick = () => {
 $('bFull').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen?.();
+  $('bFull').blur();
 };
 addEventListener('keydown', (e) => {
   if (document.querySelector('.ov:not([hidden])') || document.getElementById('welcome').style.display !== 'none' && getComputedStyle(document.getElementById('welcome')).display !== 'none') return;
