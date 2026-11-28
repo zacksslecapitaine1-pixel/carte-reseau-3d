@@ -12,8 +12,10 @@ function view(v){
   if(v==="slides"){ensureSlides()}
 }
 var sLoaded=false;
-function ensureSlides(id){var f=$("fr-slides");if(!f.getAttribute("src")){f.onload=function(){sLoaded=true;try{f.contentWindow.focus()}catch(e){}};f.src="slides/index.html"+(id?"#"+id:"");}
-  else if(id){f.contentWindow.postMessage({go:id},"*")}}
+var sPend=null,pcFlag=false;
+function sPost(m){try{$("fr-slides").contentWindow.postMessage(m,"*")}catch(e){}}
+function ensureSlides(id){var f=$("fr-slides");if(!f.getAttribute("src")){f.onload=function(){sLoaded=true;sPost({pc:pcFlag?1:0});if(sPend){sPost({go:sPend});sPend=null}try{f.contentWindow.focus()}catch(e){}};f.src="slides/index.html"+(id?"#"+id:"");}
+  else if(id){if(sLoaded)sPost({go:id});else sPend=id}}
 function slide(id){view("slides");ensureSlides(id);setTimeout(function(){try{$("fr-slides").contentWindow.focus()}catch(e){}},300)}
 /* Vidéos */
 function grid(){var o=ovs.videos;o.innerHTML='<div class="ovh"><h2>Vidéos explicatives</h2><p>7 courtes vidéos (environ 1 minute chacune). Cliquez sur une vidéo pour la lire.</p></div><div class="vg"></div>';
@@ -31,7 +33,7 @@ grid();
 /* Parcours guidé : groupe 21, 10 minutes */
 var M="Michelle (cheffe)",O="Oumate",E="Élisée",L="Lucrèce",T="Théodore";
 function site(fn){return function(){view("site");var S=window.SITE;if(S)fn(S)}}
-function sl(id){return function(){slide(id)}}
+function sl(id){var f=function(){slide(id)};f.id=id;return f}
 function vd(n){return function(){play(n)}}
 /* [qui, titre, à dire, secondes, action, facultatif] */
 var RAW=[
@@ -48,6 +50,8 @@ var RAW=[
 [O,"4 · Types de cartes","Ethernet (stable), Wi-Fi (mobile), fibre (très haut débit), Bluetooth, intégrée, PCIe, USB. Exemple : quelle carte pour quel besoin.",15,sl("s31-ethernet")],
 [O,"Vidéo 6 · Types de cartes et choix (facultatif)","Résume les types, après l’explication.",59,vd(6),1],
 [O,"5 · Caractéristiques techniques","Débit, latence, duplex, MTU : lire une fiche technique. Passer la parole à Élisée.",10,sl("s37-caract")],
+[O,"BONUS · La carte réseau dans les autres appareils (diapos)","Facultatif, hors des 10 minutes : mettre le chrono en pause (bouton ⏸). Chaque appui sur Suivant montre la diapo suivante. Montrer que téléphone, montre, voiture, imprimante… ont la même fonction sous d’autres formes.",0,sl("x8-annexe-mobiles"),2],
+[O,"BONUS · Les 11 appareils en 3D","Facultatif, hors chrono : cliquer un appareil à gauche, laisser les rayons X, cliquer les pièces ambrées, puis « Action » et « Comparer ». Appuyer sur Suivant : Élisée enchaîne.",0,function(){view("devices");if(window.DEVICES)DEVICES.open("phone")},2],
 [E,"6 · Les cinq étapes du fonctionnement","Préparation, traitement, transmission, circulation, réception. Dire chaque étape en une phrase.",25,sl("x1-etapes")],
 [E,"6 · Encapsulation et trame Ethernet","Données, segment, paquet, trame. La trame : MAC destination, MAC source, type, données, CRC.",25,sl("s16-encapsulation")],
 [E,"6 · Émission, réception, exemple de 4 000 octets","Application, noyau, pilote, DMA, carte. Un fichier de 4 000 octets devient trois trames.",20,sl("s19-emission")],
@@ -71,11 +75,15 @@ var RAW=[
 [T,"11 · Site 3D : les LED","Cliquer « Action LED » : lien absent, lien établi, activité.",15,site(function(S){S.reset();S.actStart("leds")})],
 [T,"11 · Sécuriser","802.1X, VLAN, chiffrement WPA3 et TLS, mises à jour du pilote et du firmware.",10,sl("s49-securite")],
 [T,"Conclusion et merci","Quatre idées à retenir, puis « Merci, des questions ? ».",15,sl("s51-conclusion")],
-[O,"BONUS · La carte réseau dans les autres appareils (diapos)","Facultatif, hors des 10 minutes : mettre le chrono en pause (bouton ⏸). Montrer que téléphone, montre, voiture, imprimante… ont la même fonction sous d’autres formes.",0,sl("x8-annexe-mobiles"),2],
-[O,"BONUS · Les 11 appareils en 3D","Facultatif, hors chrono : cliquer un appareil à gauche, laisser les rayons X, cliquer les pièces ambrées, puis « Action » et « Comparer ». Appuyer sur Suivant pour revenir aux questions.",0,function(){view("devices");if(window.DEVICES)DEVICES.open("phone")},2],
 [M,"Questions de la classe (hors chrono)","FAQ (diapo 57), quiz, glossaire, ou retour au site 3D. Le site est remis à la classe.",0,function(){slide("s50-faq")}]
 ];
-var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:r[5]===1,bonus:r[5]===2}});
+/* Diapos montrées par chaque étape (chaque appui sur Suivant = une diapo) */
+var SL={"s01-titre":["s01-titre","s02-equipe","s03-sommaire"],"s04-contexte":["s04-contexte","s05-problematique"],"s06-definition":["s06-definition","s07-noms"],"s08-ou":["s08-ou","s09-exemples","s10-histoire"],"s11-osi":["s11-osi","s12-couches"],"s13-anatomie":["s13-anatomie","s14-pieces","s15-logiciel"],"s31-ethernet":["s31-ethernet","s32-wifi","s33-fibre","s34-bluetooth","s35-formes","s36-comparatif","x4-ex-choix"],"s37-caract":["s37-caract"],"x1-etapes":["x1-etapes"],"s16-encapsulation":["s16-encapsulation","s17-trame","s18-champs"],"s19-emission":["s19-emission","s20-reception","s21-chemin","x2-ex-trames"],"s22-dma":["s22-dma","s23-acces","s24-negociation","x7-ex-negociation"],"s38-offload":["s38-offload","s39-virtualisation","s40-dpu"],"s25-mac":["s25-mac","s26-modes"],"s27-ip":["s27-ip","s28-mac-ip"],"s29-arp":["s29-arp","x3-ex-arp","s30-local"],"s41-bilan":["s41-bilan"],"s42-dev":["s42-dev","s43-ia","s44-bigdata","x5-ex-ia"],"s45-synthese":["s45-synthese"],"s46-choix":["s46-choix","s47-installer"],"s48-diag":["s48-diag","x6-ex-diag"],"s49-securite":["s49-securite"],"s51-conclusion":["s51-conclusion"],"x8-annexe-mobiles":["x8-annexe-mobiles","x9-annexe-maison"],"s50-faq":["s50-faq"]};
+var ST=RAW.map(function(r){return{w:r[0],h:r[1],x:r[2],t:r[3],a:r[4],opt:r[5]===1,bonus:r[5]===2,sl:r[4].id?(SL[r[4].id]||[r[4].id]):null}});
+var si=0;
+function showSl(){var s=ST[pi];if(s.sl)slide(s.sl[si])}
+function pcNext(){var s=ST[pi];if(s.sl&&si<s.sl.length-1){si++;render();showSl()}else if(pi===ST.length-1)pcStop();else go(nextI(pi,1))}
+function pcPrev(){var s=ST[pi];if(s.sl&&si>0){si--;render();showSl()}else{var k=nextI(pi,-1);if(k!==pi)go(k,true)}}
 var vidsOn=true,T0=0,tmr=null,paused=false,El=0,SLOW=1.5; /* 15 min réelles = 10:00 affichées */
 function fmt(n){n=Math.max(0,Math.floor(n));return Math.floor(n/60)+":"+("0"+(n%60)).slice(-2)}
 var CUM=[];(function(){var c=0;ST.forEach(function(s,i){if(!s.opt&&!s.bonus)c+=s.t;CUM[i]=c})})();
@@ -87,19 +95,19 @@ var PRE={};function prewarm(n){if(PRE[n])return;var v=document.createElement("vi
 function nextVid(i){for(var k=i;k<ST.length;k++){if(ST[k].opt){var m=/Vidéo (\d)/.exec(ST[k].h);if(m)return +m[1]}}return 0}
 function clk(){var vp=pcOn&&ST[pi]&&ST[pi].opt,e=$("pcT"),b=$("pcPz");if(e){e.classList.toggle("paused",!!vp||paused);e.textContent=(paused?"⏸ pause · ":vp?"⏸ vidéo · ":"⏱ ")+fmt(El)+" / 10:00";e.classList.toggle("late",El>CUM[CUM.length-2]+20)}if(b){b.textContent=paused?"▶ Reprendre":"⏸ Pause";b.classList.toggle("on",paused)}}
 function tick(){var vp=pcOn&&ST[pi]&&ST[pi].opt;if(!paused&&!vp)El+=1/SLOW;clk()}
-function render(){var s=ST[pi],last=pi===ST.length-1,np=nextI(pi,1);
-  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':s.bonus?'BONUS FACULTATIF · HORS DES 10 MINUTES · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.opt||s.bonus?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre (double-clic : remise à zéro)">⏱ '+fmt(El)+' / 10:00</button><button id="pcPz" class="pz" title="Mettre le chronomètre en pause (interruption)">⏸ Pause</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
-  $("pcP").onclick=function(){go(nextI(pi,-1))};$("pcN").onclick=function(){last?pcStop():go(np)};$("pcX").onclick=pcStop;
+function render(){var s=ST[pi],last=pi===ST.length-1&&(!s.sl||si>=s.sl.length-1);
+  pc.innerHTML='<div class="pb"><b>'+vn(pi)+'/'+vn(ST.length-1)+'</b><span>ÉTAPE</span></div><div class="pt"><div class="pw">'+(s.opt?'FACULTATIF · ':s.bonus?'BONUS FACULTATIF · HORS DES 10 MINUTES · ':'')+'PARLE : '+s.w.toUpperCase()+' · MANIPULE : OUMATE'+(s.sl&&s.sl.length>1?' · DIAPO '+(si+1)+'/'+s.sl.length:'')+(s.opt||s.bonus?'':' · CIBLE '+fmt(CUM[pi]))+'</div><div class="ph">'+s.h+'</div><div class="px">'+s.x+'</div></div><div class="pk"><button class="tm" id="pcT" title="Chronomètre (double-clic : remise à zéro)">⏱ '+fmt(El)+' / 10:00</button><button id="pcPz" class="pz" title="Mettre le chronomètre en pause (interruption)">⏸ Pause</button><button id="pcV" class="'+(vidsOn?'on':'')+'" title="Afficher ou sauter les vidéos facultatives">🎬 Vidéos : '+(vidsOn?'OUI':'NON')+'</button><button id="pcP"'+(pi||si?"":" disabled")+'>◀</button><button class="go" id="pcN">'+(last?"Terminer ✓":"Suivant ▶")+'</button><button id="pcX" title="Quitter le parcours">✕</button></div>';
+  $("pcP").onclick=pcPrev;$("pcN").onclick=pcNext;$("pcX").onclick=pcStop;
   $("pcV").onclick=function(){vidsOn=!vidsOn;if(!vis(pi)){go(nextI(pi,1))}else render()};
   $("pcPz").onclick=function(){paused=!paused;clk()};$("pcT").ondblclick=function(){El=0;paused=false;clk()};clk();
   setH()}
-function go(i){pi=Math.max(0,Math.min(ST.length-1,i));render();var s=ST[pi];if(window.SITE)window.SITE.actStop();s.a();if(vidsOn){var n=nextVid(pi);if(n)prewarm(n)}}
+function go(i,end){pi=Math.max(0,Math.min(ST.length-1,i));var s=ST[pi];si=(end&&s.sl)?s.sl.length-1:0;render();if(window.SITE)window.SITE.actStop();if(s.sl)showSl();else s.a();if(vidsOn){var n=nextVid(pi);if(n)prewarm(n)}}
 function setH(){requestAnimationFrame(function(){document.documentElement.style.setProperty("--hubh",$("hub").offsetHeight+"px")})}
-function pcStart(){pcOn=true;pc.hidden=false;mark(cur);if(!tmr)tmr=setInterval(tick,1000);go(vis(pi)?pi:nextI(pi,1))}
-function pcStop(){pcOn=false;pc.hidden=true;mark(cur);setH()}
+function pcStart(){pcOn=true;pcFlag=true;sPost({pc:1});pc.hidden=false;mark(cur);if(!tmr)tmr=setInterval(tick,1000);go(vis(pi)?pi:nextI(pi,1))}
+function pcStop(){pcOn=false;pcFlag=false;sPost({pc:0});pc.hidden=true;mark(cur);setH()}
 window.PARCOURS={start:pcStart,go:go,steps:ST};
-addEventListener("keydown",function(e){if(!pcOn||e.ctrlKey||e.metaKey||e.altKey)return;var t=(e.target.tagName||"");if(t==="INPUT"||t==="SELECT"||t==="TEXTAREA")return;if(e.key==="n"||e.key==="N"){e.preventDefault();e.stopImmediatePropagation();go(nextI(pi,1))}else if(e.key==="p"||e.key==="P"){e.preventDefault();e.stopImmediatePropagation();go(nextI(pi,-1))}},true);
-addEventListener("message",function(e){var m=e.data||{};if(!pcOn)return;if(m.nav==="next")go(nextI(pi,1));else if(m.nav==="prev")go(nextI(pi,-1))});
+addEventListener("keydown",function(e){if(!pcOn||e.ctrlKey||e.metaKey||e.altKey)return;var t=(e.target.tagName||"");if(t==="INPUT"||t==="SELECT"||t==="TEXTAREA")return;if(e.key==="n"||e.key==="N"){e.preventDefault();e.stopImmediatePropagation();pcNext()}else if(e.key==="p"||e.key==="P"){e.preventDefault();e.stopImmediatePropagation();pcPrev()}else if(cur==="slides"&&(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" ")){e.preventDefault();e.stopImmediatePropagation();pcNext()}else if(cur==="slides"&&(e.key==="ArrowLeft"||e.key==="PageUp")){e.preventDefault();e.stopImmediatePropagation();pcPrev()}},true);
+addEventListener("message",function(e){var m=e.data||{};if(!pcOn)return;if(m.nav==="next")pcNext();else if(m.nav==="prev")pcPrev();else if(m.at){var q=ST[pi].sl,k=q?q.indexOf(m.at):-1;if(k>=0&&k!==si){si=k;render()}}});
 addEventListener("resize",setH);setH();
 if(innerWidth<900||/Mobi|Android|iPhone/i.test(navigator.userAgent)){var nb=document.createElement("div");nb.style.cssText="position:fixed;left:8px;right:8px;top:8px;z-index:200;background:#fbbf24;color:#06121f;border-radius:12px;padding:10px 14px;font:700 15px 'Times New Roman',serif;display:flex;gap:10px;align-items:center";nb.innerHTML="<span style='flex:1'>Ce site est conçu pour un ordinateur. Ouvrez-le sur un ordinateur pour un affichage correct.</span><button style='border:0;background:#06121f;color:#fff;border-radius:8px;padding:6px 12px;font:700 14px serif'>OK</button>";nb.querySelector("button").onclick=function(){nb.remove()};document.body.appendChild(nb)}
 })();
